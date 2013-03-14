@@ -9,8 +9,8 @@
  *         }
  *     });
  *
- *     dataSet.add(item);
- *     dataSet.add(data);
+ *     dataSet.put(item);
+ *     dataSet.put(data);
  *     dataSet.update(item);
  *     dataSet.update(data);
  *     dataSet.remove(id);
@@ -50,21 +50,95 @@ function DataSet (options) {
         });
     }
 
+    // event subscribers
+    this.subscribers = {};
+
     this.internalIds = {};            // internally generated id's
 }
 
-// TODO: implement triggers
+/**
+ * Subscribe to an event, add an event listener
+ * @param {String} event        Event name. Available events: 'put', 'update',
+ *                              'remove'
+ * @param {function} callback   Callback method. Called with three parameters:
+ *                                  {String} event
+ *                                  {Object | null} params
+ *                                  {String} senderId
+ * @param {String} [id]         Optional id for the sender, used to filter
+ *                              events triggered by the sender itself.
+ */
+DataSet.prototype.subscribe = function (event, callback, id) {
+    var subscribers = this.subscribers[event];
+    if (!subscribers) {
+        subscribers = [];
+        this.subscribers[event] = subscribers;
+    }
+
+    subscribers.push({
+        id: id ? String(id) : null,
+        callback: callback
+    });
+};
+
+/**
+ * Unsubscribe from an event, remove an event listener
+ * @param {String} event
+ * @param {function} callback
+ */
+DataSet.prototype.unsubscribe = function (event, callback) {
+    var subscribers = this.subscribers[event];
+    if (subscribers) {
+        this.subscribers[event] = subscribers.filter(function (listener) {
+            return (listener.callback != callback);
+        });
+    }
+};
+
+/**
+ * Trigger an event
+ * @param {String} event
+ * @param {Object | null} params
+ * @param {String} [senderId]       Optional id of the sender. The event will
+ *                                  be triggered for all subscribers except the
+ *                                  sender itself.
+ * @private
+ */
+DataSet.prototype._trigger = function (event, params, senderId) {
+    if (event == '*') {
+        throw new Error('Cannot trigger event *');
+    }
+
+    var subscribers = [];
+    if (event in this.subscribers) {
+        subscribers = subscribers.concat(this.subscribers[event]);
+    }
+    if ('*' in this.subscribers) {
+        subscribers = subscribers.concat(this.subscribers['*']);
+    }
+
+    subscribers.forEach(function (listener) {
+        if (listener.id != senderId && listener.callback) {
+            listener.callback(event, params, senderId || null);
+        }
+    });
+};
 
 /**
  * Add data. Existing items with the same id will be overwritten.
  * @param {Object | Array | DataTable} data
+ * @param {String} [senderId] Optional sender id, used to trigger events for
+ *                            all but this sender's event subscribers.
  */
-DataSet.prototype.add = function (data) {
-    var me = this;
+DataSet.prototype.put = function (data, senderId) {
+    var items = [],
+        id,
+        me = this;
+
     if (data instanceof Array) {
         // Array
         data.forEach(function (item) {
-            me._setItem(item);
+            var id = me._setItem(item);
+            items.push(id);
         });
     }
     else if (isDataTable(data)) {
@@ -75,28 +149,38 @@ DataSet.prototype.add = function (data) {
             columns.forEach(function (field, col) {
                 item[field] = data.getValue(row, col);
             });
-            me._setItem(item);
+            id = me._setItem(item);
+            items.push(id);
         }
     }
     else if (data instanceof Object) {
         // Single item
-        me._setItem(data);
+        id = me._setItem(data);
+        items.push(id);
     }
     else {
         throw new Error('Unknown dataType');
     }
+
+    this._trigger('put', {items: items}, senderId);
 };
 
 /**
  * Update existing items. Items with the same id will be merged
  * @param {Object | Array | DataTable} data
+ * @param {String} [senderId] Optional sender id, used to trigger events for
+ *                            all but this sender's event subscribers.
  */
-DataSet.prototype.update = function (data) {
-    var me = this;
+DataSet.prototype.update = function (data, senderId) {
+    var items = [],
+        id,
+        me = this;
+
     if (data instanceof Array) {
         // Array
         data.forEach(function (item) {
-            me._updateItem(item);
+            var id = me._updateItem(item);
+            items.push(id);
         });
     }
     else if (isDataTable(data)) {
@@ -107,16 +191,20 @@ DataSet.prototype.update = function (data) {
             columns.forEach(function (field, col) {
                 item[field] = data.getValue(row, col);
             });
-            me._updateItem(item);
+            id = me._updateItem(item);
+            items.push(id);
         }
     }
     else if (data instanceof Object) {
         // Single item
-        me._updateItem(data);
+        id = me._updateItem(data);
+        items.push(id);
     }
     else {
         throw new Error('Unknown dataType');
     }
+
+    this._trigger('update', {items: items}, senderId);
 };
 
 /**
@@ -126,13 +214,13 @@ DataSet.prototype.update = function (data) {
  *                                          retrieve all data.
  * @param {Object} [options]                Available options:
  *                                          {String} [type]
- *                                          'DataTable' or 'Array' (default)
+ *                                              'DataTable' or 'Array' (default)
  *                                          {Object.<String, String>} [fieldTypes]
  *                                          {String[]} [fields]  filter fields
  * @param {Array | DataTable} [data]        If provided, items will be appended
  *                                          to this array or table. Required
  *                                          in case of Google DataTable
- * @return {Array | Object | DataTable | undefined} data
+ * @return {Array | Object | DataTable | null} data
  * @throws Error
  */
 DataSet.prototype.get = function (ids, options, data) {
@@ -152,7 +240,6 @@ DataSet.prototype.get = function (ids, options, data) {
     }
 
     var fields = options ? options.fields : undefined;
-    data = data || [];
 
     // determine the return type
     var type;
@@ -160,7 +247,7 @@ DataSet.prototype.get = function (ids, options, data) {
         type = (options.type == 'DataTable') ? 'DataTable' : 'Array';
 
         if (data && (type != getType(data))) {
-            throw new Error('Type of parameter "data" does (' + getType(data) + ') ' +
+            throw new Error('Type of parameter "data" (' + getType(data) + ') ' +
                 'does not correspond with specified options.type (' + options.type + ')');
         }
         if (type == 'DataTable' && !isDataTable(data)) {
@@ -185,7 +272,7 @@ DataSet.prototype.get = function (ids, options, data) {
             });
         }
         else if (isNumber(ids) || isString(ids)) {
-            var item = me._castItem(this.data[ids], fieldTypes, fields);
+            var item = me._castItem(me.data[ids], fieldTypes, fields);
             this._appendRow(data, columns, item);
         }
         else if (ids instanceof Array) {
@@ -201,6 +288,7 @@ DataSet.prototype.get = function (ids, options, data) {
     }
     else {
         // return an array
+        data = data || [];
         if (ids == undefined) {
             // return all data
             each(this.data, function (item) {
@@ -209,7 +297,7 @@ DataSet.prototype.get = function (ids, options, data) {
         }
         else if (isNumber(ids) || isString(ids)) {
             // return a single item
-            return this._castItem(ids, fieldTypes, fields);
+            return this._castItem(me.data[ids], fieldTypes, fields);
         }
         else if (ids instanceof Array) {
             ids.forEach(function (id) {
@@ -229,18 +317,23 @@ DataSet.prototype.get = function (ids, options, data) {
  * Remove an object by pointer or by id
  * @param {String | Number | Object | Array} id   Object or id, or an array with
  *                                                objects or ids to be removed
+ * @param {String} [senderId] Optional sender id, used to trigger events for
+ *                            all but this sender's event subscribers.
  */
-DataSet.prototype.remove = function (id) {
-    var me = this;
+DataSet.prototype.remove = function (id, senderId) {
+    var items = [],
+        me = this;
 
     if (isNumber(id) || isString(id)) {
         delete this.data[id];
         delete this.internalIds[id];
+        items.push(id);
     }
     else if (id instanceof Array) {
         id.forEach(function (id) {
             me.remove(id);
         });
+        items = items.concat(id);
     }
     else if (id instanceof Object) {
         // search for the object
@@ -249,23 +342,33 @@ DataSet.prototype.remove = function (id) {
                 if (this.data[i] == id) {
                     delete this.data[i];
                     delete this.internalIds[i];
+                    items.push(i);
                 }
             }
         }
     }
+
+    this._trigger('remove', {items: items}, senderId);
 };
 
 /**
  * Clear the data
+ * @param {String} [senderId] Optional sender id, used to trigger events for
+ *                            all but this sender's event subscribers.
  */
-DataSet.prototype.clear = function () {
+DataSet.prototype.clear = function (senderId) {
+    var items = Object.keys(this.data);
+
     this.data = [];
     this.internalIds = {};
+
+    this._trigger('remove', {items: items}, senderId);
 };
 
 /**
  * Set a single item
  * @param {Object} item
+ * @return {String} id
  * @private
  */
 DataSet.prototype._setItem = function (item) {
@@ -286,6 +389,8 @@ DataSet.prototype._setItem = function (item) {
         }
     }
     this.data[id] = d;
+
+    return id;
 };
 
 /**
@@ -293,11 +398,11 @@ DataSet.prototype._setItem = function (item) {
  * @param {Object | undefined} item
  * @param {Object.<String, String>} [fieldTypes]
  * @param {String[]} [fields]
- * @return {Object | undefined} castedItem
+ * @return {Object | null} castedItem
  * @private
  */
 DataSet.prototype._castItem = function (item, fieldTypes, fields) {
-    var clone = undefined;
+    var clone = null;
     if (item) {
         fieldTypes = fieldTypes || {};
 
@@ -322,6 +427,7 @@ DataSet.prototype._castItem = function (item, fieldTypes, fields) {
 /**
  * Update a single item: merge with existing item
  * @param {Object} item
+ * @return {String} id
  * @private
  */
 DataSet.prototype._updateItem = function (item) {
@@ -343,6 +449,8 @@ DataSet.prototype._updateItem = function (item) {
         // create new item
         this._setItem(item);
     }
+
+    return id;
 };
 
 /**
