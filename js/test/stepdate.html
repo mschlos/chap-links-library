@@ -1,0 +1,37 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <title></title>
+    <script src="../lib/moment.min.js"></script>
+    <script src="../src/component/util.js"></script>
+    <script src="../src/component/events.js"></script>
+    <script src="../src/component/stepdate.js"></script>
+
+    <script type="text/javascript" src="http://www.google.com/jsapi"></script>
+
+</head>
+<body>
+    <script>
+        var diffs = [
+            1000,
+            1000 * 60,
+            1000 * 60 * 60,
+            1000 * 60 * 60 * 24,
+            1000 * 60 * 60 * 24 * 30,
+            1000 * 60 * 60 * 24 * 30 * 100,
+            1000 * 60 * 60 * 24 * 30 * 10000
+        ];
+
+        diffs.forEach(function (diff) {
+            var step = new StepDate(new Date(), new Date((new Date()).valueOf() + diff), diff / 40);
+            console.log(diff, step._start.toLocaleString(), step._end.toLocaleString(), step.scale, step.step);
+            step.start();
+            while (!step.end()) {
+                console.log(step.getLabelMajor(), ' --- ', step.getLabelMinor());
+                step.next();
+            }
+        });
+
+    </script>
+</body>
+</html>
