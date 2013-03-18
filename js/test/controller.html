@@ -1,0 +1,69 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <title></title>
+    <script src="../lib/moment.min.js"></script>
+    <script src="../src/component/util.js"></script>
+    <script src="../src/component/events.js"></script>
+    <script src="../src/component/timestep.js"></script>
+    <script src="../src/component/dataset.js"></script>
+    <script src="../src/component/controller.js"></script>
+    <script src="../src/component/component.js"></script>
+    <script src="../src/component/frame.js"></script>
+    <script src="../src/component/timeaxis.js"></script>
+
+    <script type="text/javascript" src="http://www.google.com/jsapi"></script>
+
+    <link href="../src/component/css/frame.css" rel="stylesheet" type="text/css" />
+    <link href="../src/component/css/timeaxis.css" rel="stylesheet" type="text/css" />
+    <style>
+        body, html {
+            width: 100%;
+            height: 100%;
+            padding: 0;
+            margin: 0;
+        }
+
+        #visualization {
+            padding: 10px;
+            width: 80%;
+            height: 50%;
+        }
+    </style>
+
+</head>
+<body>
+
+    <div id="visualization"></div>
+
+    <script>
+        var controller = new Controller();
+
+        var start = moment().toDate();
+        var end = moment().add('days', 50).toDate();
+
+        var frame = new Frame({
+            container: document.getElementById('visualization')
+        });
+        controller.add(frame);
+
+        var timeaxis = new TimeAxis({
+            //mode: 'top',
+            start: start,
+            end: end,
+            container: function () {
+                return frame.frame;
+            },
+            top: function () {
+                return frame.height - timeaxis.height;
+            },
+            left: 0,
+            depends: [frame]
+        });
+        controller.add(timeaxis);
+
+        controller.repaint();
+
+    </script>
+</body>
+</html>

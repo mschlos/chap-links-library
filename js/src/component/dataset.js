@@ -226,6 +226,13 @@ DataSet.prototype.update = function (data, senderId) {
 DataSet.prototype.get = function (ids, options, data) {
     var me = this;
 
+    // shift arguments when first argument contains the options
+    if (getType(ids) == 'Object') {
+        data = options;
+        options = ids;
+        ids = undefined;
+    }
+
     // merge field types
     var fieldTypes = {};
     if (this.options && this.options.fieldTypes) {

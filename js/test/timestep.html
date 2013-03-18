@@ -5,7 +5,7 @@
     <script src="../lib/moment.min.js"></script>
     <script src="../src/component/util.js"></script>
     <script src="../src/component/events.js"></script>
-    <script src="../src/component/stepdate.js"></script>
+    <script src="../src/component/timestep.js"></script>
 
     <script type="text/javascript" src="http://www.google.com/jsapi"></script>
 
@@ -23,10 +23,10 @@
         ];
 
         diffs.forEach(function (diff) {
-            var step = new StepDate(new Date(), new Date((new Date()).valueOf() + diff), diff / 40);
+            var step = new TimeStep(new Date(), new Date((new Date()).valueOf() + diff), diff / 40);
             console.log(diff, step._start.toLocaleString(), step._end.toLocaleString(), step.scale, step.step);
-            step.start();
-            while (!step.end()) {
+            step.first();
+            while (step.hasNext()) {
                 console.log(step.getLabelMajor(), ' --- ', step.getLabelMinor());
                 step.next();
             }

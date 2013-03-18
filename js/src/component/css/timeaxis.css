@@ -1,0 +1,42 @@
+
+.visualization {
+    overflow: hidden;
+}
+
+.visualization .axis {
+    position: relative;
+}
+
+.visualization .axis .text {
+    position: absolute;
+    color: #4d4d4d;
+    padding: 3px;
+    white-space: nowrap;
+}
+
+.visualization .axis .text.measure {
+    position: absolute;
+    visibility: hidden;
+}
+
+.visualization .axis .grid.vertical {
+    position: absolute;
+    width: 0;
+    border-right: 1px solid;
+}
+
+.visualization .axis .grid.horizontal {
+    position: absolute;
+    left: 0;
+    width: 100%;
+    height: 0;
+    border-bottom: 1px solid;
+}
+
+.visualization .axis .grid.minor {
+    border-color: #e5e5e5;
+}
+
+.visualization .axis .grid.major {
+    border-color: #bfbfbf;
+}
