@@ -1,21 +1,24 @@
 
+// create namespace
+var util = {};
+
 /**
  * Test whether given object is a number
  * @param {*} object
  * @return {Boolean} isNumber
  */
-function isNumber(object) {
+util.isNumber = function isNumber(object) {
     return (object instanceof Number || typeof object == 'number');
-}
+};
 
 /**
  * Test whether given object is a string
  * @param {*} object
  * @return {Boolean} isString
  */
-function isString(object) {
+util.isString = function isString(object) {
     return (object instanceof String || typeof object == 'string');
-}
+};
 
 
 /**
@@ -23,11 +26,11 @@ function isString(object) {
  * @param {Date | String} object
  * @return {Boolean} isDate
  */
-function isDate(object) {
+util.isDate = function isDate(object) {
     if (object instanceof Date) {
         return true;
     }
-    else if (isString(object)) {
+    else if (util.isString(object)) {
         // test whether this string contains a date
         var match = ASPDateRegex.exec(object);
         if (match) {
@@ -39,26 +42,26 @@ function isDate(object) {
     }
 
     return false;
-}
+};
 
 /**
  * Test whether given object is an instance of google.visualization.DataTable
  * @param {*} object
  * @return {Boolean} isDataTable
  */
-function isDataTable(object) {
+util.isDataTable = function isDataTable(object) {
     return (typeof (google) !== 'undefined') &&
         (google.visualization) &&
         (google.visualization.DataTable) &&
         (object instanceof google.visualization.DataTable);
-}
+};
 
 /**
  * Create a semi UUID
  * source: http://stackoverflow.com/a/105074/1262753
  * @return {String} uuid
  */
-function randomUUID () {
+util.randomUUID = function randomUUID () {
     var S4 = function () {
         return Math.floor(
             Math.random() * 0x10000 /* 65536 */
@@ -84,7 +87,7 @@ function randomUUID () {
  * @return {*} object
  * @throws Error
  */
-function cast(object, type) {
+util.cast = function cast(object, type) {
     if (object === undefined) {
         return undefined;
     }
@@ -114,13 +117,13 @@ function cast(object, type) {
             return String(object);
 
         case 'Date':
-            if (isNumber(object)) {
+            if (util.isNumber(object)) {
                 return new Date(object);
             }
             if (object instanceof Date) {
                 return new Date(object.valueOf());
             }
-            if (isString(object)) {
+            if (util.isString(object)) {
                 // parse ASP.Net Date pattern,
                 // for example '/Date(1198908717056)/' or '/Date(1198908717056-0700)/'
                 // code from http://momentjs.com/
@@ -134,7 +137,7 @@ function cast(object, type) {
             }
             else {
                 throw new Error(
-                    'Cannot cast object of type ' + getType(object) +
+                    'Cannot cast object of type ' + util.getType(object) +
                         ' to type Date');
             }
 
@@ -142,12 +145,12 @@ function cast(object, type) {
             if (object instanceof Date) {
                 return object.toISOString();
             }
-            else if (isNumber(object) || isString(Object)) {
+            else if (util.isNumber(object) || util.isString(Object)) {
                 return (new Date(object)).toISOString()
             }
             else {
                 throw new Error(
-                    'Cannot cast object of type ' + getType(object) +
+                    'Cannot cast object of type ' + util.getType(object) +
                         ' to type ISODate');
             }
 
@@ -155,20 +158,20 @@ function cast(object, type) {
             if (object instanceof Date) {
                 return '/Date(' + object.valueOf() + ')/';
             }
-            else if (isNumber(object) || isString(Object)) {
+            else if (util.isNumber(object) || util.isString(Object)) {
                 return '/Date(' + (new Date(object)).valueOf() + ')/';
             }
             else {
                 throw new Error(
-                    'Cannot cast object of type ' + getType(object) +
+                    'Cannot cast object of type ' + util.getType(object) +
                         ' to type ASPDate');
             }
 
         default:
-            throw new Error('Cannot cast object of type ' + getType(object) +
+            throw new Error('Cannot cast object of type ' + util.getType(object) +
                 ' to type "' + type + '"');
     }
-}
+};
 
 var ASPDateRegex = /^\/?Date\((\-?\d+)/i;
 
@@ -177,7 +180,7 @@ var ASPDateRegex = /^\/?Date\((\-?\d+)/i;
  * @param {*} object
  * @return {String} type
  */
-function getType(object) {
+util.getType = function getType(object) {
     var type = typeof object;
 
     if (type == 'object') {
@@ -190,7 +193,7 @@ function getType(object) {
     }
 
     return type;
-}
+};
 
 /**
  * For each method for both arrays and objects.
@@ -201,7 +204,7 @@ function getType(object) {
  *                                  the object or array with three parameters:
  *                                  callback(value, index, object)
  */
-function each (object, callback) {
+util.forEach = function forEach (object, callback) {
     if (object instanceof Array) {
         // array
         object.forEach(callback);
@@ -215,6 +218,113 @@ function each (object, callback) {
         }
     }
 }
+
+/**
+ * Add and event listener. Works for all browsers
+ * @param {Element} element    An html element
+ * @param {string}      action     The action, for example "click",
+ *                                 without the prefix "on"
+ * @param {function}    listener   The callback function to be executed
+ * @param {boolean}     useCapture
+ */
+util.addEventListener = function addEventListener(element, action, listener, useCapture) {
+    if (element.addEventListener) {
+        if (useCapture === undefined)
+            useCapture = false;
+
+        if (action === "mousewheel" && navigator.userAgent.indexOf("Firefox") >= 0) {
+            action = "DOMMouseScroll";  // For Firefox
+        }
+
+        element.addEventListener(action, listener, useCapture);
+    } else {
+        element.attachEvent("on" + action, listener);  // IE browsers
+    }
+};
+
+/**
+ * Remove an event listener from an element
+ * @param {Element}  element   An html dom element
+ * @param {string}       action    The name of the event, for example "mousedown"
+ * @param {function}     listener  The listener function
+ * @param {boolean}      useCapture
+ */
+util.removeEventListener = function removeEventListener(element, action, listener, useCapture) {
+    if (element.removeEventListener) {
+        // non-IE browsers
+        if (useCapture === undefined)
+            useCapture = false;
+
+        if (action === "mousewheel" && navigator.userAgent.indexOf("Firefox") >= 0) {
+            action = "DOMMouseScroll";  // For Firefox
+        }
+
+        element.removeEventListener(action, listener, useCapture);
+    } else {
+        // IE browsers
+        element.detachEvent("on" + action, listener);
+    }
+};
+
+
+/**
+ * Get HTML element which is the target of the event
+ * @param {Event} event
+ * @return {Element} target element
+ */
+util.getTarget = function getTarget(event) {
+    // code from http://www.quirksmode.org/js/events_properties.html
+    if (!event) {
+        event = window.event;
+    }
+
+    var target;
+
+    if (event.target) {
+        target = event.target;
+    }
+    else if (event.srcElement) {
+        target = event.srcElement;
+    }
+
+    if (target.nodeType != undefined && target.nodeType == 3) {
+        // defeat Safari bug
+        target = target.parentNode;
+    }
+
+    return target;
+};
+
+/**
+ * Stop event propagation
+ */
+util.stopPropagation = function stopPropagation(event) {
+    if (!event)
+        event = window.event;
+
+    if (event.stopPropagation) {
+        event.stopPropagation();  // non-IE browsers
+    }
+    else {
+        event.cancelBubble = true;  // IE browsers
+    }
+};
+
+
+/**
+ * Cancels the event if it is cancelable, without stopping further propagation of the event.
+ */
+util.preventDefault = function preventDefault (event) {
+    if (!event)
+        event = window.event;
+
+    if (event.preventDefault) {
+        event.preventDefault();  // non-IE browsers
+    }
+    else {
+        event.returnValue = false;  // IE browsers
+    }
+};
 
 
 // Internet Explorer 8 and older does not support Array.indexOf, so we define
@@ -395,4 +505,3 @@ if (!Object.keys) {
         }
     })()
 }
-
