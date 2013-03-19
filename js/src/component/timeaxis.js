@@ -54,12 +54,60 @@ TimeAxis.prototype.setConfig = function (config) {
 
 
 /**
+ * Set a new value for the visible range int the timeline.
+ * Set start undefined to include everything from the earliest date to end.
+ * Set end undefined to include everything from start to the last date.
+ * Example usage:
+ *    TimeAxis.setVisibleChartRange(new Date("2010-08-22"),
+ *                                    new Date("2010-09-13"));
+ * @param {Date | String | Number}  start   The start date for the timeline
+ * @param {Date | String | Number}  end     The end date for the timeline
+ * @param {boolean} [redraw]                If true (default) the Timeline is
+ *                                          directly redrawn
+ */
+TimeAxis.prototype.setVisibleChartRange = function(start, end, redraw) {
+    this.start = cast(start, 'Date');
+    this.end = cast(end, 'Date');
+
+    if (isNaN(this.start.valueOf())) {
+        throw new Error('Invalid start date "' + start + '"');
+    }
+    if (isNaN(this.start.valueOf())) {
+        throw new Error('Invalid end date "' + end + '"');
+    }
+
+    // prevent start Date <= end Date
+    if (this.end <= this.start) {
+        this.end = new Date(this.start.valueOf());
+        this.end.setDate(this.end.getDate() + 7);
+    }
+
+    this._updateConversion();
+
+    if (redraw == undefined || redraw == true) {
+        this.requestRepaint();
+    }
+};
+
+/**
+ * Retrieve the current visible range in the timeline.
+ * @return {Object} An object with start and end properties
+ */
+TimeAxis.prototype.getVisibleChartRange = function() {
+    return {
+        start: new Date(this.start.valueOf()),
+        end: new Date(this.end.valueOf())
+    };
+};
+
+
+/**
  * Calculate the factor and offset to convert a position on screen to the
  * corresponding date and vice versa.
- * After the method calcConversionFactor is executed once, the methods screenToTime and
- * timeToScreen can be used.
+ * After the method calcConversionFactor is executed once, the methods _toTime
+ * and _toScreen can be used.
  */
-TimeAxis.prototype.updateConversion = function() {
+TimeAxis.prototype._updateConversion = function() {
     this.conversion.offset = this.start.valueOf();
     this.conversion.factor = this.width /
         (this.end.valueOf() - this.start.valueOf());
@@ -68,25 +116,25 @@ TimeAxis.prototype.updateConversion = function() {
 
 /**
  * Convert a position on screen (pixels) to a datetime
- * Before this method can be used, the method updateConversion must be
+ * Before this method can be used, the method _updateConversion must be
  * executed once.
  * @param {int}     x    Position on the screen in pixels
  * @return {Date}   time The datetime the corresponds with given position x
  */
-TimeAxis.prototype.toTime = function(x) {
+TimeAxis.prototype._toTime = function(x) {
     var conversion = this.conversion;
     return new Date(x / conversion.factor + conversion.offset);
 };
 
 /**
  * Convert a datetime (Date object) into a position on the screen
- * Before this method can be used, the method updateConversion must be
+ * Before this method can be used, the method _updateConversion must be
  * executed once.
  * @param {Date}   time A date
  * @return {int}   x    The position on the screen in pixels which corresponds
  *                      with the given date.
  */
-TimeAxis.prototype.toScreen = function(time) {
+TimeAxis.prototype._toScreen = function(time) {
     var conversion = this.conversion;
     return (time.valueOf() - conversion.offset) * conversion.factor;
 };
@@ -152,7 +200,7 @@ TimeAxis.prototype.repaint = function () {
         }
 
         // calculate best step
-        this.minimumStep = this.toTime(charWidth * 6) - this.toTime(0);
+        this.minimumStep = this._toTime(charWidth * 6) - this._toTime(0);
         step.setRange(this.start, this.end, this.minimumStep);
 
         this._repaintStart();
@@ -163,7 +211,7 @@ TimeAxis.prototype.repaint = function () {
         while (step.hasNext() && max < 1000) {
             max++;
             var cur = step.getCurrent(),
-                x = this.toScreen(cur),
+                x = this._toScreen(cur),
                 isMajor = step.isMajor();
 
             // TODO: lines must have a width, such that we can create css backgrounds
@@ -190,7 +238,7 @@ TimeAxis.prototype.repaint = function () {
 
         // create a major label on the left when needed
         if (config.showMajorLabels) {
-            var leftTime = this.toTime(0),
+            var leftTime = this._toTime(0),
                 leftText = this.step.getLabelMajor(leftTime),
                 widthText = leftText.length * this.props.minorCharWidth + 10; // upper bound estimation
 
@@ -510,7 +558,7 @@ TimeAxis.prototype.reflow = function () {
             needRepaint = true;
         }
 
-        this.updateConversion();
+        this._updateConversion();
     }
 
     if (needRepaint) {
