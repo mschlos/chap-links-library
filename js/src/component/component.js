@@ -30,15 +30,23 @@ Component.prototype.setConfig = function(config) {
     var me = this;
     if (config) {
         each(config, function (value, key) {
-            me.config[key] = value;
-        });
+            switch (key) {
+                case 'id':
+                    me.id = value;
+                    break;
+                case 'depends':
+                    me.depends = value;
+                    break;
 
-        if (config.id) {
-            this.id = config.id
-        }
-        if (config.depends) {
-            this.depends = config.depends;
-        }
+                case 'parent':
+                    me.parent = value;
+                    break;
+
+                default:
+                    me.config[key] = value;
+                    break;
+            }
+        });
     }
 
     if (!this.id) {

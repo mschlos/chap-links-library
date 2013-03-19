@@ -50,6 +50,7 @@ TimeAxis.prototype.setConfig = function (config) {
     if (config.end) {
         this.end = cast(config.end, 'Date');
     }
+    this._updateConversion();
 };
 
 
@@ -66,21 +67,25 @@ TimeAxis.prototype.setConfig = function (config) {
  *                                          directly redrawn
  */
 TimeAxis.prototype.setVisibleChartRange = function(start, end, redraw) {
-    this.start = cast(start, 'Date');
-    this.end = cast(end, 'Date');
+    var newStart = cast(start, 'Date');
+    var newEnd = cast(end, 'Date');
 
-    if (isNaN(this.start.valueOf())) {
+    // check for valid date
+    if (!newStart || isNaN(newStart.valueOf())) {
         throw new Error('Invalid start date "' + start + '"');
     }
-    if (isNaN(this.start.valueOf())) {
+    if (!newEnd || isNaN(newEnd.valueOf())) {
         throw new Error('Invalid end date "' + end + '"');
     }
 
     // prevent start Date <= end Date
-    if (this.end <= this.start) {
-        this.end = new Date(this.start.valueOf());
-        this.end.setDate(this.end.getDate() + 7);
+    if (newEnd <= newStart) {
+        newEnd = new Date(newStart.valueOf());
+        newEnd.setDate(newEnd.getDate() + 7);
     }
+
+    this.start = newStart;
+    this.end = newEnd;
 
     this._updateConversion();
 
@@ -109,7 +114,7 @@ TimeAxis.prototype.getVisibleChartRange = function() {
  */
 TimeAxis.prototype._updateConversion = function() {
     this.conversion.offset = this.start.valueOf();
-    this.conversion.factor = this.width /
+    this.conversion.factor = (this.width || 1) /
         (this.end.valueOf() - this.start.valueOf());
 };
 
@@ -158,7 +163,8 @@ TimeAxis.prototype.repaint = function () {
     frame.className = 'axis ' + this.config.mode;
 
     if (!frame.parentNode) {
-        var container = Component.toDom(this.config.container);
+        var defaultContainer = this.parent ? this.parent.frame : undefined;
+        var container = Component.toDom(this.config.container, defaultContainer);
         if (!container) {
             throw new Error('Cannot repaint frame: no container attached');
         }
@@ -173,14 +179,20 @@ TimeAxis.prototype.repaint = function () {
         // TODO: take frame offline while updating
 
         // update top
-        var top = Component.toSize(this.config.top, '0');
+        var mode = this.config.mode;
+        var defaultTop = (mode == 'bottom') ? (this.props.parentHeight - this.height) + 'px' : '0';
+        var top = Component.toSize(this.config.top, defaultTop);
         if (frame.style.top != top) {
             frame.style.top = top;
             needReflow = true;
         }
 
         // update left
-        frame.style.left = '0';
+        var left = Component.toSize(this.config.left, '0');
+        if (frame.style.left != left) {
+            frame.style.left = left;
+            needReflow = true;
+        }
 
         // update width
         var width = Component.toSize(this.config.width, '100%');
@@ -508,6 +520,10 @@ TimeAxis.prototype.reflow = function () {
         }
 
         var parentHeight = frame.parentNode ? frame.parentNode.offsetHeight : 0;
+        if (parentHeight != props.parentHeight) {
+            props.parentHeight = parentHeight;
+            needRepaint = true;
+        }
         switch (this.config.mode) {
             case 'bottom':
                 props.minorLabelHeight = showMinorLabels ? props.minorCharHeight : 0;
@@ -517,11 +533,11 @@ TimeAxis.prototype.reflow = function () {
                 props.majorLabelTop = props.minorLabelTop + props.minorLabelHeight;
 
                 props.minorLineTop = -this.top;
-                props.minorLineHeight = parentHeight - props.majorLabelHeight;
+                props.minorLineHeight = this.top + props.majorLabelHeight;
                 props.minorLineWidth = 1; // TODO: really calculate width
 
                 props.majorLineTop = -this.top;
-                props.majorLineHeight = parentHeight;
+                props.majorLineHeight = this.top + props.minorLabelHeight + props.majorLabelHeight;
                 props.majorLineWidth = 1; // TODO: really calculate width
 
                 props.lineTop = 0;
@@ -537,11 +553,11 @@ TimeAxis.prototype.reflow = function () {
 
                 // TODO: lineheight is not yet calculated correctly
                 props.minorLineTop = props.minorLabelTop;
-                props.minorLineHeight = parentHeight - props.majorLabelHeight;
+                props.minorLineHeight = parentHeight - props.majorLabelHeight - this.top;
                 props.minorLineWidth = 1; // TODO: really calculate width
 
                 props.majorLineTop = 0;
-                props.majorLineHeight = parentHeight;
+                props.majorLineHeight = parentHeight - this.top;
                 props.majorLineWidth = 1; // TODO: really calculate width
 
                 props.lineTop = props.majorLabelHeight +  props.minorLabelHeight;

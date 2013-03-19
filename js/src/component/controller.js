@@ -22,7 +22,9 @@ Controller.prototype.add = function (component) {
         throw new TypeError('Component must be an instance of prototype Component');
     }
 
-    component.parent = this;
+    if (!component.parent) {
+        component.parent = this;
+    }
     this.components[component.id] = component;
 };
 
@@ -77,6 +79,12 @@ Controller.prototype.requestRepaint = function () {
  * Repaint all components
  */
 Controller.prototype.repaint = function () {
+    // cancel any running repaint request
+    if (this.repaintTimer) {
+        clearTimeout(this.repaintTimer);
+        this.repaintTimer = undefined;
+    }
+
     var done = {};
 
     function repaint(component, id) {
@@ -98,8 +106,6 @@ Controller.prototype.repaint = function () {
 
     // immediately repaint when needed
     if (this.reflowTimer) {
-        clearTimeout(this.reflowTimer);
-        this.reflowTimer = undefined;
         this.reflow();
     }
     // TODO: limit the number of nested reflows/repaints, prevent loop
@@ -109,6 +115,12 @@ Controller.prototype.repaint = function () {
  * Reflow all components
  */
 Controller.prototype.reflow = function () {
+    // cancel any running repaint request
+    if (this.reflowTimer) {
+        clearTimeout(this.reflowTimer);
+        this.reflowTimer = undefined;
+    }
+
     var done = {};
 
     function reflow(component, id) {
@@ -130,8 +142,6 @@ Controller.prototype.reflow = function () {
 
     // immediately repaint when needed
     if (this.repaintTimer) {
-        clearTimeout(this.repaintTimer);
-        this.repaintTimer = undefined;
         this.repaint();
     }
     // TODO: limit the number of nested reflows/repaints, prevent loop

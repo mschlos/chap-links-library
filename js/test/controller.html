@@ -51,13 +51,16 @@
             //mode: 'top',
             start: start,
             end: end,
+            parent: frame,
+            /*
             container: function () {
                 return frame.frame;
             },
-            top: function () {
-                return frame.height - timeaxis.height;
+            left: 100,
+            width: function () {
+                return frame.width - timeaxis.left - 100;
             },
-            left: 0,
+            */
             depends: [frame]
         });
         controller.add(timeaxis);
