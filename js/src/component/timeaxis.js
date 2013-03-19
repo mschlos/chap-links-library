@@ -261,10 +261,9 @@ TimeAxis.prototype._repaintMinorText = function (x, text) {
         label = document.createElement('div');
         label.appendChild(content);
         label.className = 'text minor';
-        this.dom.minorTexts.push(label);
-
         this.frame.appendChild(label);
     }
+    this.dom.minorTexts.push(label);
 
     label.childNodes[0].nodeValue = text;
     label.style.left = x + 'px';
@@ -288,10 +287,9 @@ TimeAxis.prototype._repaintMajorText = function (x, text) {
         label = document.createElement('div');
         label.className = 'text major';
         label.appendChild(content);
-
         this.frame.appendChild(label);
-        this.dom.majorTexts.push(label);
     }
+    this.dom.majorTexts.push(label);
 
     label.childNodes[0].nodeValue = text;
     label.style.top = this.props.majorLabelTop + 'px';
@@ -312,10 +310,9 @@ TimeAxis.prototype._repaintMinorLine = function (x) {
         // create vertical line
         line = document.createElement('div');
         line.className = 'grid vertical minor';
-
         this.frame.appendChild(line);
-        this.dom.minorLines.push(line);
     }
+    this.dom.minorLines.push(line);
 
     var props = this.props;
     line.style.top = props.minorLineTop + 'px';
@@ -336,10 +333,9 @@ TimeAxis.prototype._repaintMajorLine = function (x) {
         // create vertical line
         line = document.createElement('DIV');
         line.className = 'grid vertical major';
-
         this.frame.appendChild(line);
-        this.dom.majorLines.push(line);
     }
+    this.dom.majorLines.push(line);
 
     var props = this.props;
     line.style.top = props.majorLineTop + 'px';
