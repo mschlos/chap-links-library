@@ -8,6 +8,9 @@ function Controller () {
 
     this.repaintTimer = undefined;
     this.reflowTimer = undefined;
+
+    this.listeners = {}; // event listeners
+    this.emitters = [];   // event sources
 }
 
 /**
@@ -15,6 +18,7 @@ function Controller () {
  * @param {Component} component
  */
 Controller.prototype.add = function (component) {
+    // validate the component
     if (component.id == undefined) {
         throw new Error('Component has no field id');
     }
@@ -22,9 +26,17 @@ Controller.prototype.add = function (component) {
         throw new TypeError('Component must be an instance of prototype Component');
     }
 
-    if (!component.parent) {
-        component.parent = this;
+    // move any event listener from the component to the controller.
+    var me = this;
+    component.controller = this;
+    if (component.listenerQueue) {
+        component.listenerQueue.forEach(function (listener) {
+            me.on(listener.event, listener.callback);
+        });
+        component.listenerQueue = undefined;
     }
+
+    // add the component
     this.components[component.id] = component;
 };
 
@@ -36,7 +48,7 @@ Controller.prototype.add = function (component) {
 Controller.prototype.find = function (componentType) {
     var results = [];
 
-    each(this.components, function (component) {
+    util.forEach(this.components, function (component) {
         if (component instanceof componentType) {
             results.push(component);
         }
@@ -95,6 +107,9 @@ Controller.prototype.repaint = function () {
                     repaint(dep, dep.id);
                 });
             }
+            if (component.parent) {
+                repaint(component.parent, component.parent.id);
+            }
 
             // repaint the component itself and mark as done
             component.repaint();
@@ -102,7 +117,9 @@ Controller.prototype.repaint = function () {
         }
     }
 
-    each(this.components, repaint);
+    util.forEach(this.components, repaint);
+
+    this._updateEventEmitters();
 
     // immediately repaint when needed
     if (this.reflowTimer) {
@@ -131,6 +148,9 @@ Controller.prototype.reflow = function () {
                     reflow(dep, dep.id);
                 });
             }
+            if (component.parent) {
+                reflow(component.parent, component.parent.id);
+            }
 
             // reflow the component itself and mark as done
             component.reflow();
@@ -138,11 +158,70 @@ Controller.prototype.reflow = function () {
         }
     }
 
-    each(this.components, reflow);
+    util.forEach(this.components, reflow);
 
     // immediately repaint when needed
     if (this.repaintTimer) {
         this.repaint();
     }
     // TODO: limit the number of nested reflows/repaints, prevent loop
+};
+
+/**
+ * Add an event listener
+ * @param {String} event       name of the event, for example 'click', 'mousemove'
+ * @param {function} callback  callback handler, invoked with the raw HTML Event
+ *                             as parameter.
+ */
+// TODO: implement a method to remove event listeners
+Controller.prototype.on = function (event, callback) {
+    var arr = this.listeners[event];
+    if (!arr) {
+        arr = [];
+        this.listeners[event] = arr;
+    }
+    arr.push(callback);
+
+    this._updateEventEmitters();
+};
+
+/**
+ * Add an event emitting source. The component must have a frame
+ * @param {Component} component
+ */
+Controller.prototype.addEventEmitter = function (component) {
+    this.emitters.push({
+        component: component,
+        listeners: {}
+    });
+    this._updateEventEmitters();
+};
+
+/**
+ * Update the event listeners for all event emitters
+ * @private
+ */
+Controller.prototype._updateEventEmitters = function () {
+    var me = this;
+    util.forEach(this.listeners, function (listeners, event) {
+        me.emitters.forEach(function (emitter) {
+            if (!(event in emitter.listeners)) {
+                // create event
+                var frame = emitter.component.frame;
+                if (frame) {
+                    //console.log('Created a listener for event ' + event +
+                    //    ' on component ' + emitter.component.id); // TODO: cleanup logging
+                    var callback = function(event) {
+                        listeners.forEach(function (listener) {
+                            listener(event);
+                        });
+                    };
+                    emitter.listeners[event] = callback;
+                    util.addEventListener(frame, event, callback);
+                }
+            }
+        });
+    });
+
+    // TODO: also be able to delete event listeners?
 };

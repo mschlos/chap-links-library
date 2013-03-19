@@ -40,7 +40,7 @@ function DataSet (options) {
     this.idField = this.options.id || 'id'; // field name of the id
     this.fieldTypes = {};                   // field types by field name
     if (options.fieldTypes) {
-        each(options.fieldTypes, function (value, field) {
+        util.forEach(options.fieldTypes, function (value, field) {
             if (value == 'Date' || value == 'ISODate' || value == 'ASPDate') {
                 me.fieldTypes[field] = 'Date';
             }
@@ -141,7 +141,7 @@ DataSet.prototype.put = function (data, senderId) {
             items.push(id);
         });
     }
-    else if (isDataTable(data)) {
+    else if (util.isDataTable(data)) {
         // Google DataTable
         var columns = this._getColumnNames(data);
         for (var row = 0, rows = data.getNumberOfRows(); row < rows; row++) {
@@ -183,7 +183,7 @@ DataSet.prototype.update = function (data, senderId) {
             items.push(id);
         });
     }
-    else if (isDataTable(data)) {
+    else if (util.isDataTable(data)) {
         // Google DataTable
         var columns = this._getColumnNames(data);
         for (var row = 0, rows = data.getNumberOfRows(); row < rows; row++) {
@@ -227,7 +227,7 @@ DataSet.prototype.get = function (ids, options, data) {
     var me = this;
 
     // shift arguments when first argument contains the options
-    if (getType(ids) == 'Object') {
+    if (util.getType(ids) == 'Object') {
         data = options;
         options = ids;
         ids = undefined;
@@ -236,12 +236,12 @@ DataSet.prototype.get = function (ids, options, data) {
     // merge field types
     var fieldTypes = {};
     if (this.options && this.options.fieldTypes) {
-        each(this.options.fieldTypes, function (value, field) {
+        util.forEach(this.options.fieldTypes, function (value, field) {
             fieldTypes[field] = value;
         });
     }
     if (options && options.fieldTypes) {
-        each(options.fieldTypes, function (value, field) {
+        util.forEach(options.fieldTypes, function (value, field) {
             fieldTypes[field] = value;
         });
     }
@@ -253,17 +253,17 @@ DataSet.prototype.get = function (ids, options, data) {
     if (options && options.type) {
         type = (options.type == 'DataTable') ? 'DataTable' : 'Array';
 
-        if (data && (type != getType(data))) {
-            throw new Error('Type of parameter "data" (' + getType(data) + ') ' +
+        if (data && (type != util.getType(data))) {
+            throw new Error('Type of parameter "data" (' + util.getType(data) + ') ' +
                 'does not correspond with specified options.type (' + options.type + ')');
         }
-        if (type == 'DataTable' && !isDataTable(data)) {
+        if (type == 'DataTable' && !util.isDataTable(data)) {
             throw new Error('Parameter "data" must be a DataTable ' +
                 'when options.type is "DataTable"');
         }
     }
     else if (data) {
-        type = (getType(data) == 'DataTable') ? 'DataTable' : 'Array';
+        type = (util.getType(data) == 'DataTable') ? 'DataTable' : 'Array';
     }
     else {
         type = 'Array';
@@ -274,11 +274,11 @@ DataSet.prototype.get = function (ids, options, data) {
         var columns = this._getColumnNames(data);
         if (ids == undefined) {
             // return all data
-            each(this.data, function (item) {
+            util.forEach(this.data, function (item) {
                 me._appendRow(data, columns, me._castItem(item));
             });
         }
-        else if (isNumber(ids) || isString(ids)) {
+        else if (util.isNumber(ids) || util.isString(ids)) {
             var item = me._castItem(me.data[ids], fieldTypes, fields);
             this._appendRow(data, columns, item);
         }
@@ -298,11 +298,11 @@ DataSet.prototype.get = function (ids, options, data) {
         data = data || [];
         if (ids == undefined) {
             // return all data
-            each(this.data, function (item) {
+            util.forEach(this.data, function (item) {
                 data.push(me._castItem(item, fieldTypes, fields));
             });
         }
-        else if (isNumber(ids) || isString(ids)) {
+        else if (util.isNumber(ids) || util.isString(ids)) {
             // return a single item
             return this._castItem(me.data[ids], fieldTypes, fields);
         }
@@ -331,7 +331,7 @@ DataSet.prototype.remove = function (id, senderId) {
     var items = [],
         me = this;
 
-    if (isNumber(id) || isString(id)) {
+    if (util.isNumber(id) || util.isString(id)) {
         delete this.data[id];
         delete this.internalIds[id];
         items.push(id);
@@ -382,7 +382,7 @@ DataSet.prototype._setItem = function (item) {
     var id = item[this.idField];
     if (id == undefined) {
         // generate an id
-        id = randomUUID();
+        id = util.randomUUID();
         item[this.idField] = id;
 
         this.internalIds[id] = item;
@@ -392,7 +392,7 @@ DataSet.prototype._setItem = function (item) {
     for (var field in item) {
         if (item.hasOwnProperty(field)) {
             var type = this.fieldTypes[field];  // type may be undefined
-            d[field] = cast(item[field], type);
+            d[field] = util.cast(item[field], type);
         }
     }
     this.data[id] = d;
@@ -417,7 +417,7 @@ DataSet.prototype._castItem = function (item, fieldTypes, fields) {
         for (var field in item) {
             if (item.hasOwnProperty(field)) {
                 if (!fields || (fields.indexOf(field) != -1)) {
-                    clone[field] = cast(item[field], fieldTypes[field]);
+                    clone[field] = util.cast(item[field], fieldTypes[field]);
                 }
             }
         }
@@ -448,7 +448,7 @@ DataSet.prototype._updateItem = function (item) {
         for (var field in item) {
             if (item.hasOwnProperty(field)) {
                 var type = this.fieldTypes[field];  // type may be undefined
-                d[field] = cast(item[field], type);
+                d[field] = util.cast(item[field], type);
             }
         }
     }

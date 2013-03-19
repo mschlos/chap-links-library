@@ -15,8 +15,6 @@ function Frame(options) {
 Frame.prototype = new Component();
 
 Frame.prototype.repaint = function () {
-    console.log('repaint frame ' + this.id.split('-')[0]); // TODO: cleanup logging
-
     var needReflow = false;
     var frame = this.frame;
     if (!frame) {
@@ -57,8 +55,6 @@ Frame.prototype.repaint = function () {
 };
 
 Frame.prototype.reflow = function () {
-    console.log('reflow frame ' + this.id.split('-')[0]); // TODO: cleanup logging
-
     var needRepaint = false;
     var frame = this.frame;
     if (frame) {

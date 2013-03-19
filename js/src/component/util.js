@@ -75,7 +75,7 @@ util.randomUUID = function randomUUID () {
             S4() + '-' +
             S4() + S4() + S4()
         );
-}
+};
 
 /**
  * Cast an object to another type
@@ -217,15 +217,15 @@ util.forEach = function forEach (object, callback) {
             }
         }
     }
-}
+};
 
 /**
  * Add and event listener. Works for all browsers
- * @param {Element} element    An html element
+ * @param {Element}     element    An html element
  * @param {string}      action     The action, for example "click",
  *                                 without the prefix "on"
  * @param {function}    listener   The callback function to be executed
- * @param {boolean}     useCapture
+ * @param {boolean}     [useCapture]
  */
 util.addEventListener = function addEventListener(element, action, listener, useCapture) {
     if (element.addEventListener) {
@@ -244,10 +244,10 @@ util.addEventListener = function addEventListener(element, action, listener, use
 
 /**
  * Remove an event listener from an element
- * @param {Element}  element   An html dom element
- * @param {string}       action    The name of the event, for example "mousedown"
- * @param {function}     listener  The listener function
- * @param {boolean}      useCapture
+ * @param {Element}     element         An html dom element
+ * @param {string}      action          The name of the event, for example "mousedown"
+ * @param {function}    listener        The listener function
+ * @param {boolean}     [useCapture]
  */
 util.removeEventListener = function removeEventListener(element, action, listener, useCapture) {
     if (element.removeEventListener) {

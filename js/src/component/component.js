@@ -4,6 +4,7 @@
 function Component () {
     this.id = null;
     this.parent = null;
+    this.controller = null;
     this.options = {};
 
     this.frame = null; // main DOM element
@@ -29,7 +30,7 @@ function Component () {
 Component.prototype.setOptions = function(options) {
     var me = this;
     if (options) {
-        each(options, function (value, key) {
+        util.forEach(options, function (value, key) {
             switch (key) {
                 case 'id':
                     me.id = value;
@@ -50,7 +51,12 @@ Component.prototype.setOptions = function(options) {
     }
 
     if (!this.id) {
-        this.id = randomUUID();
+        this.id = util.randomUUID();
+    }
+
+    if (this.controller) {
+        this.requestRepaint();
+        this.requestReflow();
     }
 };
 
@@ -76,12 +82,11 @@ Component.prototype.reflow = function (props) {
  * Request a repaint. The controller will schedule a repaint
  */
 Component.prototype.requestRepaint = function () {
-    var parent = this.parent;
-    if (parent) {
-        parent.requestRepaint();
+    if (this.controller) {
+        this.controller.requestRepaint();
     }
     else {
-        throw new Error('Cannot request a repaint: no parent configured');
+        throw new Error('Cannot request a repaint: no controller configured');
         // TODO: just do a repaint when no parent is configured?
     }
 };
@@ -90,13 +95,35 @@ Component.prototype.requestRepaint = function () {
  * Request a reflow. The controller will schedule a reflow
  */
 Component.prototype.requestReflow = function () {
-    var parent = this.parent;
-    if (parent) {
-        parent.requestReflow();
+    if (this.controller) {
+        this.controller.requestReflow();
     }
     else {
-        throw new Error('Cannot request a reflow: no parent configured');
+        throw new Error('Cannot request a reflow: no controller configured');
         // TODO: just do a reflow when no parent is configured?
+    }
+};
+
+/**
+ * Event handler
+ * @param {String} event       name of the event, for example 'click', 'mousemove'
+ * @param {function} callback  callback handler, invoked with the raw HTML Event
+ *                             as parameter.
+ */
+Component.prototype.on = function (event, callback) {
+    if (this.controller) {
+        this.controller.on(event, callback);
+    }
+    else {
+        // if there is no controller, put the listener in a queue which will be
+        // emptied by the controller as soon as it is connected.
+        if (!this.listenerQueue) {
+            this.listenerQueue = [];
+        }
+        this.listenerQueue.push({
+            event: event,
+            callback: callback
+        });
     }
 };
 
@@ -111,10 +138,10 @@ Component.toSize = function (value, defaultValue) {
         value = value();
     }
 
-    if (isString(value)) {
+    if (util.isString(value)) {
         return value;
     }
-    else if (isNumber(value)) {
+    else if (util.isNumber(value)) {
         return value + 'px';
     }
     else {

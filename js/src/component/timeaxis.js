@@ -45,10 +45,10 @@ TimeAxis.prototype.setOptions = function (options) {
     Component.prototype.setOptions.call(this, options);
 
     if (options.start) {
-        this.start = cast(options.start, 'Date');
+        this.start = util.cast(options.start, 'Date');
     }
     if (options.end) {
-        this.end = cast(options.end, 'Date');
+        this.end = util.cast(options.end, 'Date');
     }
     this._updateConversion();
 };
@@ -67,8 +67,8 @@ TimeAxis.prototype.setOptions = function (options) {
  *                                          directly redrawn
  */
 TimeAxis.prototype.setVisibleChartRange = function(start, end, redraw) {
-    var newStart = cast(start, 'Date');
-    var newEnd = cast(end, 'Date');
+    var newStart = util.cast(start, 'Date');
+    var newEnd = util.cast(end, 'Date');
 
     // check for valid date
     if (!newStart || isNaN(newStart.valueOf())) {
@@ -148,8 +148,6 @@ TimeAxis.prototype._toScreen = function(time) {
  * Repaint the time axis
  */
 TimeAxis.prototype.repaint = function () {
-    console.log('repaint timeaxis ' + this.id.split('-')[0]); // TODO: cleanup logging
-
     var needReflow = false;
     var step = this.step,
         options = this.options;
@@ -294,7 +292,7 @@ TimeAxis.prototype._repaintStart = function () {
  * @private
  */
 TimeAxis.prototype._repaintEnd = function () {
-    each(this.dom.redundant, function (arr) {
+    util.forEach(this.dom.redundant, function (arr) {
         while (arr.length) {
             var elem = arr.pop();
             if (elem && elem.parentNode) {
@@ -481,8 +479,6 @@ TimeAxis.prototype._repaintMeasureChars = function () {
  * Reflow the time axis
  */
 TimeAxis.prototype.reflow = function () {
-    console.log('reflow timeaxis ' + this.id.split('-')[0]); // TODO: cleanup logging
-
     var needRepaint = false;
     var frame = this.frame;
     if (frame) {
