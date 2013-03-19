@@ -99,6 +99,7 @@ function cast(object, type) {
         return type(object);
     }
 
+    //noinspection FallthroughInSwitchStatementJS
     switch (type) {
         case 'boolean':
         case 'Boolean':

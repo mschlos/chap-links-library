@@ -4,7 +4,7 @@
 function Component () {
     this.id = null;
     this.parent = null;
-    this.config = {};
+    this.options = {};
 
     this.frame = null; // main DOM element
     this.top = 0;
@@ -16,7 +16,7 @@ function Component () {
 /**
  * Set parameters for the frame. Parameters will be merged in current parameter
  * set.
- * @param {Object} config   Available parameters:
+ * @param {Object} options  Available parameters:
  *                          {String} [id]
  *                          {HTMLElement} container
  *                          {Array} depends           Components on which this
@@ -26,10 +26,10 @@ function Component () {
  *                          {String | Number | function} [width]
  *                          {String | Number | function} [height]
  */
-Component.prototype.setConfig = function(config) {
+Component.prototype.setOptions = function(options) {
     var me = this;
-    if (config) {
-        each(config, function (value, key) {
+    if (options) {
+        each(options, function (value, key) {
             switch (key) {
                 case 'id':
                     me.id = value;
@@ -43,7 +43,7 @@ Component.prototype.setConfig = function(config) {
                     break;
 
                 default:
-                    me.config[key] = value;
+                    me.options[key] = value;
                     break;
             }
         });

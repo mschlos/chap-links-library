@@ -1,6 +1,6 @@
 /**
  * A frame containing all components
- * @param {Object} config   Available config parameters:
+ * @param {Object} options   Available parameters:
  *                          {HTMLElement} container
  *                          {String} [id]
  *                          {String | Number} [width]
@@ -8,8 +8,8 @@
  * @constructor Frame
  * @extends Component
  */
-function Frame(config) {
-    this.setConfig(config);
+function Frame(options) {
+    this.setOptions(options);
 }
 
 Frame.prototype = new Component();
@@ -26,7 +26,7 @@ Frame.prototype.repaint = function () {
         needReflow = true;
     }
     if (!frame.parentNode) {
-        var container = Component.toDom(this.config.container);
+        var container = Component.toDom(this.options.container);
         if (!container) {
             throw new Error('Cannot repaint frame: no container attached');
         }
@@ -38,14 +38,14 @@ Frame.prototype.repaint = function () {
     }
 
     // update width
-    var width = Component.toSize(this.config.width, '100%');
+    var width = Component.toSize(this.options.width, '100%');
     if (frame.style.width != width) {
         frame.style.width = width;
         needReflow = true;
     }
 
     // update height
-    var height = Component.toSize(this.config.height, '100%');
+    var height = Component.toSize(this.options.height, '100%');
     if (frame.style.height != height) {
         frame.style.height = height;
         needReflow = true;

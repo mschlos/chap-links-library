@@ -1,6 +1,6 @@
 /**
  * A horizontal time axis
- * @param {Object} [config] Available config parameters:
+ * @param {Object} [options] Available parameters:
  *                          {String} [id]
  *                          {HTMLElement} container
  *                          {Array} depends           Components on which this
@@ -14,7 +14,7 @@
  * @constructor TimeAxis
  * @extends Component
  */
-function TimeAxis (config) {
+function TimeAxis (options) {
     this.dom = {
         majorLines: [],
         majorTexts: [],
@@ -32,23 +32,23 @@ function TimeAxis (config) {
     this.step = new TimeStep();
 
     // default configuration
-    this.config.mode = 'bottom';
-    this.config.showMinorLabels = true;
-    this.config.showMajorLabels = true;
+    this.options.mode = 'bottom';
+    this.options.showMinorLabels = true;
+    this.options.showMajorLabels = true;
 
-    this.setConfig(config);
+    this.setOptions(options);
 }
 
 TimeAxis.prototype = new Component();
 
-TimeAxis.prototype.setConfig = function (config) {
-    Component.prototype.setConfig.call(this, config);
+TimeAxis.prototype.setOptions = function (options) {
+    Component.prototype.setOptions.call(this, options);
 
-    if (config.start) {
-        this.start = cast(config.start, 'Date');
+    if (options.start) {
+        this.start = cast(options.start, 'Date');
     }
-    if (config.end) {
-        this.end = cast(config.end, 'Date');
+    if (options.end) {
+        this.end = cast(options.end, 'Date');
     }
     this._updateConversion();
 };
@@ -152,7 +152,7 @@ TimeAxis.prototype.repaint = function () {
 
     var needReflow = false;
     var step = this.step,
-        config = this.config;
+        options = this.options;
 
     var frame = this.frame;
     if (!frame) {
@@ -160,11 +160,11 @@ TimeAxis.prototype.repaint = function () {
         this.frame = frame;
         needReflow = true;
     }
-    frame.className = 'axis ' + this.config.mode;
+    frame.className = 'axis ' + options.mode;
 
     if (!frame.parentNode) {
         var defaultContainer = this.parent ? this.parent.frame : undefined;
-        var container = Component.toDom(this.config.container, defaultContainer);
+        var container = Component.toDom(options.container, defaultContainer);
         if (!container) {
             throw new Error('Cannot repaint frame: no container attached');
         }
@@ -179,23 +179,23 @@ TimeAxis.prototype.repaint = function () {
         // TODO: take frame offline while updating
 
         // update top
-        var mode = this.config.mode;
+        var mode = options.mode;
         var defaultTop = (mode == 'bottom') ? (this.props.parentHeight - this.height) + 'px' : '0';
-        var top = Component.toSize(this.config.top, defaultTop);
+        var top = Component.toSize(options.top, defaultTop);
         if (frame.style.top != top) {
             frame.style.top = top;
             needReflow = true;
         }
 
         // update left
-        var left = Component.toSize(this.config.left, '0');
+        var left = Component.toSize(options.left, '0');
         if (frame.style.left != left) {
             frame.style.left = left;
             needReflow = true;
         }
 
         // update width
-        var width = Component.toSize(this.config.width, '100%');
+        var width = Component.toSize(options.width, '100%');
         if (frame.style.width != width) {
             frame.style.width = width;
             needReflow = true;
@@ -228,11 +228,11 @@ TimeAxis.prototype.repaint = function () {
 
             // TODO: lines must have a width, such that we can create css backgrounds
 
-            if (config.showMinorLabels) {
+            if (options.showMinorLabels) {
                 this._repaintMinorText(x, step.getLabelMinor());
             }
 
-            if (isMajor && config.showMajorLabels) {
+            if (isMajor && options.showMajorLabels) {
                 if (x > 0) {
                     if (xFirstMajorLabel == undefined) {
                         xFirstMajorLabel = x;
@@ -249,7 +249,7 @@ TimeAxis.prototype.repaint = function () {
         }
 
         // create a major label on the left when needed
-        if (config.showMajorLabels) {
+        if (options.showMajorLabels) {
             var leftTime = this._toTime(0),
                 leftText = this.step.getLabelMajor(leftTime),
                 widthText = leftText.length * this.props.minorCharWidth + 10; // upper bound estimation
@@ -411,10 +411,10 @@ TimeAxis.prototype._repaintMajorLine = function (x) {
 TimeAxis.prototype._repaintLine = function() {
     var line = this.dom.line,
         frame = this.frame,
-        config = this.config;
+        options = this.options;
 
     // line before all axis elements
-    if (config.showMinorLabels || config.showMajorLabels) {
+    if (options.showMinorLabels || options.showMajorLabels) {
         if (line) {
             // put this line at the end of all childs
             frame.removeChild(line);
@@ -506,8 +506,8 @@ TimeAxis.prototype.reflow = function () {
 
         // calculate size of a character
         var props = this.props,
-            showMinorLabels = this.config.showMinorLabels,
-            showMajorLabels = this.config.showMajorLabels,
+            showMinorLabels = this.options.showMinorLabels,
+            showMajorLabels = this.options.showMajorLabels,
             measureCharMinor = this.dom.measureCharMinor,
             measureCharMajor = this.dom.measureCharMajor;
         if (measureCharMinor) {
@@ -524,7 +524,7 @@ TimeAxis.prototype.reflow = function () {
             props.parentHeight = parentHeight;
             needRepaint = true;
         }
-        switch (this.config.mode) {
+        switch (this.options.mode) {
             case 'bottom':
                 props.minorLabelHeight = showMinorLabels ? props.minorCharHeight : 0;
                 props.majorLabelHeight = showMajorLabels ? props.majorCharHeight : 0;
@@ -565,7 +565,7 @@ TimeAxis.prototype.reflow = function () {
                 break;
 
             default:
-                throw new Error('Unkown mode "' + this.config.mode + '"');
+                throw new Error('Unkown mode "' + this.options.mode + '"');
         }
 
         var height = props.minorLabelHeight + props.majorLabelHeight;
