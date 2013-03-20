@@ -49,6 +49,8 @@ Frame.prototype.repaint = function () {
         needReflow = true;
     }
 
+    this._updateEventEmitters();
+
     if (needReflow) {
         this.requestReflow();
     }

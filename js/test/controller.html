@@ -46,7 +46,6 @@
             container: document.getElementById('visualization')
         });
         controller.add(frame);
-        controller.addEventEmitter(frame);
 
         var timeaxis = new TimeAxis({
             //mode: 'top',
@@ -64,7 +63,7 @@
             */
             //depends: [frame]
         });
-        controller.on('click', function (event) {
+        timeaxis.on('click', function (event) {
             console.log('click', event);
         });
         controller.add(timeaxis);

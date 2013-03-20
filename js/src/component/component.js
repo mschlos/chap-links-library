@@ -111,19 +111,54 @@ Component.prototype.requestReflow = function () {
  *                             as parameter.
  */
 Component.prototype.on = function (event, callback) {
-    if (this.controller) {
-        this.controller.on(event, callback);
+    if (this.parent) {
+        this.parent.on(event, callback);
     }
     else {
-        // if there is no controller, put the listener in a queue which will be
-        // emptied by the controller as soon as it is connected.
-        if (!this.listenerQueue) {
-            this.listenerQueue = [];
+        // register the listener at this component
+        if (!this.listeners) {
+            this.listeners = {};
         }
-        this.listenerQueue.push({
-            event: event,
-            callback: callback
+        var arr = this.listeners[event];
+        if (!arr) {
+            arr = [];
+            this.listeners[event] = arr;
+        }
+        arr.push(callback);
+
+        this._updateEventEmitters();
+    }
+};
+
+/**
+ * Update the event listeners for all event emitters
+ * @private
+ */
+Component.prototype._updateEventEmitters = function () {
+    if (this.listeners) {
+        var me = this;
+        util.forEach(this.listeners, function (listeners, event) {
+            if (!me.emitters) {
+                me.emitters = {};
+            }
+            if (!(event in me.emitters)) {
+                // create event
+                var frame = me.frame;
+                if (frame) {
+                    //console.log('Created a listener for event ' + event + ' on component ' + me.id); // TODO: cleanup logging
+                    var callback = function(event) {
+                        listeners.forEach(function (listener) {
+                            listener(event);
+                        });
+                    };
+                    me.emitters[event] = callback;
+                    util.addEventListener(frame, event, callback);
+                }
+            }
         });
+
+        // TODO: be able to delete event listeners
+        // TODO: be able to move event listeners to a parent when available
     }
 };
 
