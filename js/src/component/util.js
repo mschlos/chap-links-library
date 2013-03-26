@@ -196,6 +196,125 @@ util.getType = function getType(object) {
 };
 
 /**
+ * Retrieve the absolute left value of a DOM element
+ * @param {Element} elem        A dom element, for example a div
+ * @return {number} left        The absolute left position of this element
+ *                              in the browser page.
+ */
+util.getAbsoluteLeft = function getAbsoluteLeft (elem) {
+    var doc = document.documentElement;
+    var body = document.body;
+
+    var left = elem.offsetLeft;
+    var e = elem.offsetParent;
+    while (e != null && e != body && e != doc) {
+        left += e.offsetLeft;
+        left -= e.scrollLeft;
+        e = e.offsetParent;
+    }
+    return left;
+};
+
+/**
+ * Retrieve the absolute top value of a DOM element
+ * @param {Element} elem        A dom element, for example a div
+ * @return {number} top        The absolute top position of this element
+ *                              in the browser page.
+ */
+util.getAbsoluteTop = function getAbsoluteTop (elem) {
+    var doc = document.documentElement;
+    var body = document.body;
+
+    var top = elem.offsetTop;
+    var e = elem.offsetParent;
+    while (e != null && e != body && e != doc) {
+        top += e.offsetTop;
+        top -= e.scrollTop;
+        e = e.offsetParent;
+    }
+    return top;
+};
+
+/**
+ * Get the absolute, vertical mouse position from an event.
+ * @param {Event} event
+ * @return {Number} pageY
+ */
+util.getPageY = function getPageY (event) {
+    if ('pageY' in event) {
+        return event.pageY;
+    }
+    else {
+        var clientY;
+        if (('targetTouches' in event) && event.targetTouches.length) {
+            clientY = event.targetTouches[0].clientY;
+        }
+        else {
+            clientY = event.clientY;
+        }
+
+        var doc = document.documentElement;
+        var body = document.body;
+        return clientY +
+            ( doc && doc.scrollTop || body && body.scrollTop || 0 ) -
+            ( doc && doc.clientTop || body && body.clientTop || 0 );
+    }
+};
+
+/**
+ * Get the absolute, horizontal mouse position from an event.
+ * @param {Event} event
+ * @return {Number} pageX
+ */
+util.getPageX = function getPageX (event) {
+    if ('pageY' in event) {
+        return event.pageX;
+    }
+    else {
+        var clientX;
+        if (('targetTouches' in event) && event.targetTouches.length) {
+            clientX = event.targetTouches[0].clientX;
+        }
+        else {
+            clientX = event.clientX;
+        }
+
+        var doc = document.documentElement;
+        var body = document.body;
+        return clientX +
+            ( doc && doc.scrollLeft || body && body.scrollLeft || 0 ) -
+            ( doc && doc.clientLeft || body && body.clientLeft || 0 );
+    }
+};
+
+/**
+ * add a className to the given elements style
+ * @param {Element} elem
+ * @param {String} className
+ */
+util.addClassName = function addClassName(elem, className) {
+    var classes = elem.className.split(' ');
+    if (classes.indexOf(className) == -1) {
+        classes.push(className); // add the class to the array
+        elem.className = classes.join(' ');
+    }
+};
+
+/**
+ * add a className to the given elements style
+ * @param {Element} elem
+ * @param {String} className
+ */
+util.removeClassName = function removeClassname(elem, className) {
+    var classes = elem.className.split(' ');
+    var index = classes.indexOf(className);
+    if (index != -1) {
+        classes.splice(index, 1); // remove the class from the array
+        elem.className = classes.join(' ');
+    }
+};
+
+/**
  * For each method for both arrays and objects.
  * In case of an array, the built-in Array.forEach() is applied.
  * In case of an Object, the method loops over all properties of the object.

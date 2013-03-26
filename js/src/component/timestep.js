@@ -14,7 +14,7 @@
  * can iterate from the start date to the end date via next(). You can check if
  * the end date is reached with the function hasNext(). After each step, you can
  * retrieve the current date via getCurrent().
- * The class step has scales ranging from milliseconds, seconds, minutes, hours,
+ * The TimeStep has scales ranging from milliseconds, seconds, minutes, hours,
  * days, to years.
  *
  * Version: 1.2
@@ -25,7 +25,6 @@
  * @param {Number} [minimumStep] Optional. Minimum step size in milliseconds
  */
 TimeStep = function(start, end, minimumStep) {
-
     // variables
     this.current = new Date();
     this._start = new Date();
@@ -77,7 +76,7 @@ TimeStep.prototype.setRange = function(start, end, minimumStep) {
 };
 
 /**
- * Set the step iterator to the start date.
+ * Set the range iterator to the start date.
  */
 TimeStep.prototype.first = function() {
     this.current = new Date(this._start.valueOf());
@@ -372,8 +371,8 @@ TimeStep.prototype.snap = function(date) {
 };
 
 /**
- * Check if the current step is a major step (for example when the step
- * is DAY, a major step is each first day of the MONTH)
+ * Check if the current value is a major value (for example when the step
+ * is DAY, a major value is each first day of the MONTH)
  * @return {boolean} true if current date is major, else false.
  */
 TimeStep.prototype.isMajor = function() {

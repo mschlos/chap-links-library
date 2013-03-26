@@ -9,6 +9,8 @@
  * @extends Component
  */
 function Frame(options) {
+    this.id = util.randomUUID();
+
     this.setOptions(options);
 }
 

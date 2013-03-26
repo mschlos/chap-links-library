@@ -40,44 +40,31 @@
     <div id="visualization"></div>
 
     <script>
+        // controller
         var controller = new Controller();
 
-        var range = new Range({
-            start: moment().toDate(),
-            end: moment().add('days', 50).toDate()
-        });
-
+        // frame
         var frame = new Frame({
             container: document.getElementById('visualization')
         });
         controller.add(frame);
 
+        // time range
+        var range = new Range({
+            start: moment().valueOf(),
+            end: moment().add('days', 50).valueOf()
+        });
         range.listen(frame, 'move', 'horizontal');
         range.listen(frame, 'zoom', 'horizontal');
 
+        // time axis
         var timeaxis = new TimeAxis({
-            //mode: 'top',
-            //range: rangeController,
             range: range,
             parent: frame
-            /*
-            container: function () {
-                return frame.frame;
-            },
-            left: 100,
-            width: function () {
-                return frame.width - timeaxis.left - 100;
-            },
-            */
-            //depends: [frame]
         });
-        /*
-        timeaxis.on('click', function (event) {
-            console.log('click', event);
-        });
-        */
         controller.add(timeaxis);
 
+        // go!
         controller.repaint();
 
     </script>

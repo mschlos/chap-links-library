@@ -9,12 +9,16 @@
  *                          {String | Number | function} [top]
  *                          {String | Number | function} [width]
  *                          {String | Number | function} [height]
- *                          {String} [start]
- *                          {String} [end]
+ *                          {Range} [range]
+ *                          {Date} [start]
+ *                          {Date} [end]
+ *                          {Number} [step]
  * @constructor TimeAxis
  * @extends Component
  */
 function TimeAxis (options) {
+    this.id = util.randomUUID();
+
     this.dom = {
         majorLines: [],
         majorTexts: [],
@@ -29,12 +33,16 @@ function TimeAxis (options) {
     };
     this.props = {};
     this.conversion = {};
-    this.step = new TimeStep();
+    this.range = new Range();
 
     // default configuration
     this.options.mode = 'bottom';
+    this.options.moveable = true;
+    this.options.zoomable = true;
     this.options.showMinorLabels = true;
     this.options.showMajorLabels = true;
+    this.options.intervalMin = 10;
+    this.options.intervalMax = 10;
 
     this.setOptions(options);
 }
@@ -44,80 +52,41 @@ TimeAxis.prototype = new Component();
 TimeAxis.prototype.setOptions = function (options) {
     Component.prototype.setOptions.call(this, options);
 
-    if (options.start) {
-        this.start = util.cast(options.start, 'Date');
+    if (options.range) {
+        if (!(options.range instanceof Range)) {
+            throw new TypeError('range must be an instance of Range');
+        }
+
+        // TODO: first unregister events from an existing range
+
+        this.range = options.range;
+
+        var me = this;
+        this.range.on('rangechange', function () {
+            me.requestRepaint();
+        });
+        this.range.on('rangechanged', function () {
+            me.requestRepaint();
+        });
     }
-    if (options.end) {
-        this.end = util.cast(options.end, 'Date');
+    else {
+        if (options.start || options.end) {
+            this.range.setRange(options.start, options.end);
+        }
     }
-    this._updateConversion();
-};
-
-
-/**
- * Set a new value for the visible range int the timeline.
- * Set start undefined to include everything from the earliest date to end.
- * Set end undefined to include everything from start to the last date.
- * Example usage:
- *    TimeAxis.setVisibleChartRange(new Date("2010-08-22"),
- *                                    new Date("2010-09-13"));
- * @param {Date | String | Number}  start   The start date for the timeline
- * @param {Date | String | Number}  end     The end date for the timeline
- * @param {boolean} [redraw]                If true (default) the Timeline is
- *                                          directly redrawn
- */
-TimeAxis.prototype.setVisibleChartRange = function(start, end, redraw) {
-    var newStart = util.cast(start, 'Date');
-    var newEnd = util.cast(end, 'Date');
-
-    // check for valid date
-    if (!newStart || isNaN(newStart.valueOf())) {
-        throw new Error('Invalid start date "' + start + '"');
-    }
-    if (!newEnd || isNaN(newEnd.valueOf())) {
-        throw new Error('Invalid end date "' + end + '"');
-    }
-
-    // prevent start Date <= end Date
-    if (newEnd <= newStart) {
-        newEnd = new Date(newStart.valueOf());
-        newEnd.setDate(newEnd.getDate() + 7);
-    }
-
-    this.start = newStart;
-    this.end = newEnd;
-
-    this._updateConversion();
-
-    if (redraw == undefined || redraw == true) {
-        this.requestRepaint();
-    }
-};
-
-/**
- * Retrieve the current visible range in the timeline.
- * @return {Object} An object with start and end properties
- */
-TimeAxis.prototype.getVisibleChartRange = function() {
-    return {
-        start: new Date(this.start.valueOf()),
-        end: new Date(this.end.valueOf())
-    };
 };
 
 
 /**
  * Calculate the factor and offset to convert a position on screen to the
  * corresponding date and vice versa.
- * After the method calcConversionFactor is executed once, the methods _toTime
+ * After the method _updateConversion is executed once, the methods _toTime
  * and _toScreen can be used.
+ * @private
  */
 TimeAxis.prototype._updateConversion = function() {
-    this.conversion.offset = this.start.valueOf();
-    this.conversion.factor = (this.width || 1) /
-        (this.end.valueOf() - this.start.valueOf());
+    this.conversion = this.range.conversion(this.width);
 };
-
 
 /**
  * Convert a position on screen (pixels) to a datetime
@@ -125,6 +94,7 @@ TimeAxis.prototype._updateConversion = function() {
  * executed once.
  * @param {int}     x    Position on the screen in pixels
  * @return {Date}   time The datetime the corresponds with given position x
+ * @private
  */
 TimeAxis.prototype._toTime = function(x) {
     var conversion = this.conversion;
@@ -138,6 +108,7 @@ TimeAxis.prototype._toTime = function(x) {
  * @param {Date}   time A date
  * @return {int}   x    The position on the screen in pixels which corresponds
  *                      with the given date.
+ * @private
  */
 TimeAxis.prototype._toScreen = function(time) {
     var conversion = this.conversion;
@@ -149,8 +120,7 @@ TimeAxis.prototype._toScreen = function(time) {
  */
 TimeAxis.prototype.repaint = function () {
     var needReflow = false;
-    var step = this.step,
-        options = this.options;
+    var options = this.options;
 
     var frame = this.frame;
     if (!frame) {
@@ -173,8 +143,9 @@ TimeAxis.prototype.repaint = function () {
         needReflow = true;
     }
 
-    if (frame.parentNode) {
-        // TODO: take frame offline while updating
+    var parent = frame.parentNode;
+    if (parent) {
+        parent.removeChild(frame); //  take frame offline while updating (is almost twice as fast)
 
         // update top
         var mode = options.mode;
@@ -210,8 +181,12 @@ TimeAxis.prototype.repaint = function () {
         }
 
         // calculate best step
-        this.minimumStep = this._toTime(charWidth * 6) - this._toTime(0);
-        step.setRange(this.start, this.end, this.minimumStep);
+        this._updateConversion();
+        var minimumStep = this._toTime(charWidth * 5) - this._toTime(0);
+        var step = new TimeStep(
+            util.cast(this.range.start, 'Date'),
+            util.cast(this.range.end, 'Date'),
+            minimumStep);
 
         this._repaintStart();
 
@@ -249,8 +224,8 @@ TimeAxis.prototype.repaint = function () {
         // create a major label on the left when needed
         if (options.showMajorLabels) {
             var leftTime = this._toTime(0),
-                leftText = this.step.getLabelMajor(leftTime),
-                widthText = leftText.length * this.props.minorCharWidth + 10; // upper bound estimation
+                leftText = step.getLabelMajor(leftTime),
+                widthText = leftText.length * charWidth + 10; // upper bound estimation
 
             if (xFirstMajorLabel == undefined || widthText < xFirstMajorLabel) {
                 this._repaintMajorText(0, leftText);
@@ -260,12 +235,16 @@ TimeAxis.prototype.repaint = function () {
         this._repaintEnd();
 
         this._repaintLine();
+
+        parent.appendChild(frame); // put frame online again
     }
 
     if (needReflow) {
         this.requestReflow();
     }
 };
+
+var avg = 10;
 
 /**
  * Start a repaint. Move all DOM elements to a redundant list, where they

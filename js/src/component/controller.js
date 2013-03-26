@@ -4,6 +4,8 @@
  * A Controller controls the reflows and repaints of all visual components
  */
 function Controller () {
+    this.id = util.randomUUID();
+    this.controller = null;
     this.components = {};
 
     this.repaintTimer = undefined;
@@ -12,15 +14,16 @@ function Controller () {
 
 /**
  * Add a component to the controller
- * @param {Component} component
+ * @param {Component | Controller} component
  */
 Controller.prototype.add = function (component) {
     // validate the component
     if (component.id == undefined) {
         throw new Error('Component has no field id');
     }
-    if (!(component instanceof Component)) {
-        throw new TypeError('Component must be an instance of prototype Component');
+    if (!(component instanceof Component) && !(component instanceof Controller)) {
+        throw new TypeError('Component must be an instance of ' +
+            'prototype Component or Controller');
     }
 
     // add the component
@@ -29,36 +32,20 @@ Controller.prototype.add = function (component) {
 };
 
 /**
- * Find components by name
- * @param {function} componentType
- * @return {Component[]} components
- */
-Controller.prototype.find = function (componentType) {
-    var results = [];
-
-    util.forEach(this.components, function (component) {
-        if (component instanceof componentType) {
-            results.push(component);
-        }
-    });
-
-    if (this instanceof componentType) {
-        results.push(this);
-    }
-
-    return results;
-};
-
-/**
  * Request a reflow. The controller will schedule a reflow
  */
 Controller.prototype.requestReflow = function () {
-    if (!this.reflowTimer) {
-        var me = this;
-        this.reflowTimer = setTimeout(function () {
-            me.reflowTimer = undefined;
-            me.reflow();
-        }, 0);
+    if (this.controller) {
+        this.controller.requestReflow();
+    }
+    else {
+        if (!this.reflowTimer) {
+            var me = this;
+            this.reflowTimer = setTimeout(function () {
+                me.reflowTimer = undefined;
+                me.reflow();
+            }, 0);
+        }
     }
 };
 
@@ -66,12 +53,17 @@ Controller.prototype.requestReflow = function () {
  * Request a repaint. The controller will schedule a repaint
  */
 Controller.prototype.requestRepaint = function () {
-    if (!this.repaintTimer) {
-        var me = this;
-        this.repaintTimer = setTimeout(function () {
-            me.repaintTimer = undefined;
-            me.repaint();
-        }, 0);
+    if (this.controller) {
+        this.controller.requestReflow();
+    }
+    else {
+        if (!this.repaintTimer) {
+            var me = this;
+            this.repaintTimer = setTimeout(function () {
+                me.repaintTimer = undefined;
+                me.repaint();
+            }, 0);
+        }
     }
 };
 

@@ -1,5 +1,5 @@
 /**
- * Interface prototype for visual components
+ * Prototype for visual components
  */
 function Component () {
     this.id = null;
@@ -50,25 +50,11 @@ Component.prototype.setOptions = function(options) {
         });
     }
 
-    if (!this.id) {
-        this.id = util.randomUUID();
-    }
-
     if (this.controller) {
         this.requestRepaint();
         this.requestReflow();
     }
 };
-
-/**
- * Find components by name
- * @param {function} componentType
- * @return {Component[]} components
- */
-Component.prototype.find = function(componentType) {
-    return this.parent ? this.parent.find(componentType) : [];
-};
-
 
 Component.prototype.repaint = function (props) {
     // should be implemented by the component
@@ -148,6 +134,7 @@ Component.prototype._updateEventEmitters = function () {
                     //console.log('Created a listener for event ' + event + ' on component ' + me.id); // TODO: cleanup logging
                     var callback = function(event) {
                         listeners.forEach(function (listener) {
+                            // TODO: filter on event target!
                             listener(event);
                         });
                     };
