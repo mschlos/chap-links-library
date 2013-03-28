@@ -10,12 +10,11 @@
     <script src="../src/component/controller.js"></script>
     <script src="../src/component/range.js"></script>
     <script src="../src/component/component.js"></script>
-    <script src="../src/component/frame.js"></script>
+    <script src="../src/component/panel.js"></script>
+    <script src="../src/component/rootpanel.js"></script>
     <script src="../src/component/timeaxis.js"></script>
 
-    <script type="text/javascript" src="http://www.google.com/jsapi"></script>
-
-    <link href="../src/component/css/frame.css" rel="stylesheet" type="text/css" />
+    <link href="../src/component/css/panel.css" rel="stylesheet" type="text/css" />
     <link href="../src/component/css/timeaxis.css" rel="stylesheet" type="text/css" />
     <style>
         body, html {
@@ -32,6 +31,10 @@
             width: 100%;
             height: 50%;
         }
+
+        #visualization .sub {
+            border: 1px dashed red;
+        }
     </style>
 
 </head>
@@ -43,24 +46,38 @@
         // controller
         var controller = new Controller();
 
-        // frame
-        var frame = new Frame({
-            container: document.getElementById('visualization')
+        // main panel
+        var main = new RootPanel({
+            container: document.getElementById('visualization'),
+            className: 'main',
+            autoResize: true
         });
-        controller.add(frame);
+        controller.add(main);
+
+        // sub panel
+        var sub = new Panel({
+            parent: main,
+            className: 'sub',
+            left: 200,
+            top: 0,
+            width: function () {
+                return main.width - 200;
+            }
+        });
+        controller.add(sub);
 
         // time range
         var range = new Range({
             start: moment().valueOf(),
             end: moment().add('days', 50).valueOf()
         });
-        range.listen(frame, 'move', 'horizontal');
-        range.listen(frame, 'zoom', 'horizontal');
+        range.listen(main, 'move', 'horizontal');
+        range.listen(main, 'zoom', 'horizontal');
 
         // time axis
         var timeaxis = new TimeAxis({
             range: range,
-            parent: frame
+            parent: sub
         });
         controller.add(timeaxis);
 

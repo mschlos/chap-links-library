@@ -10,12 +10,12 @@
     <script src="../src/component/controller.js"></script>
     <script src="../src/component/range.js"></script>
     <script src="../src/component/component.js"></script>
-    <script src="../src/component/frame.js"></script>
+    <script src="../src/component/panel.js"></script>
+    <script src="../src/component/rootpanel.js"></script>
     <script src="../src/component/timeaxis.js"></script>
+    <script src="../src/component/itemset.js"></script>
 
-    <script type="text/javascript" src="http://www.google.com/jsapi"></script>
-
-    <link href="../src/component/css/frame.css" rel="stylesheet" type="text/css" />
+    <link href="../src/component/css/panel.css" rel="stylesheet" type="text/css" />
     <link href="../src/component/css/timeaxis.css" rel="stylesheet" type="text/css" />
     <style>
         body, html {
@@ -32,6 +32,10 @@
             width: 100%;
             height: 50%;
         }
+
+        .frame .items {
+            /*background: rgba(255, 255, 0, 0.5);*/
+        }
     </style>
 
 </head>
@@ -40,26 +44,29 @@
     <div id="visualization"></div>
 
     <script>
+        // controller
         var controller = new Controller();
 
+        // main panel
+        var main = new Panel({
+            container: document.getElementById('visualization'),
+            autoResize: true
+        });
+        controller.add(main);
+
+        // range
         var range = new Range({
             start: moment().toDate(),
             end: moment().add('days', 50).toDate()
         });
+        range.listen(main, 'move', 'horizontal');
+        range.listen(main, 'zoom', 'horizontal');
 
-        var frame = new Frame({
-            container: document.getElementById('visualization')
-        });
-        controller.add(frame);
-
-        range.listen(frame, 'move', 'horizontal');
-        range.listen(frame, 'zoom', 'horizontal');
-
+        // time axis
         var timeaxis = new TimeAxis({
-            //mode: 'top',
-            //range: rangeController,
+            //orientation: 'top',
             range: range,
-            parent: frame
+            parent: main
             /*
             container: function () {
                 return frame.frame;
@@ -77,6 +84,16 @@
         });
         */
         controller.add(timeaxis);
+
+        // items panel
+        var items = new Panel({
+            parent: main,
+            className: 'items',
+            height: function () {
+                return main.height - timeaxis.height;
+            }
+        });
+        controller.add(items);
 
         controller.repaint();
 

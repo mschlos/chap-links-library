@@ -91,14 +91,14 @@ Range.prototype.on = function (event, callback) {
 
 /**
  * Trigger an event
- * @param {String} event    name of the event, available names: 'rangechange',
+ * @param {String} event    name of the event, available events: 'rangechange',
  *                          'rangechanged'
  * @private
  */
 Range.prototype._trigger = function (event) {
     events.trigger(this, event, {
-        start: this.start,  // TODO: create a copy of start
-        end: this.end       // TODO: create a copy of end
+        start: this.start,
+        end: this.end
     });
 };
 

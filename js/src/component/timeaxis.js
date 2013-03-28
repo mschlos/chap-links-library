@@ -2,14 +2,14 @@
  * A horizontal time axis
  * @param {Object} [options] Available parameters:
  *                          {String} [id]
- *                          {HTMLElement} container
- *                          {Array} depends           Components on which this
- *                                                    component is dependent
+ *                          {Component} parent
+ *                          {Component[]} [depends]   Components on which this
+ *                                                    component depends on
  *                          {String | Number | function} [left]
  *                          {String | Number | function} [top]
  *                          {String | Number | function} [width]
  *                          {String | Number | function} [height]
- *                          {Range} [range]
+ *                          {Range | {start:number, end:number} } [range]
  *                          {Date} [start]
  *                          {Date} [end]
  *                          {Number} [step]
@@ -32,11 +32,16 @@ function TimeAxis (options) {
         }
     };
     this.props = {};
-    this.conversion = {};
-    this.range = new Range();
+    this.options = {};
+    this.conversion = {
+        offset: 0,
+        factor: 1
+    };
+    this.range = null;
 
     // default configuration
-    this.options.mode = 'bottom';
+    this.options.orientation = 'bottom';  // supported: 'top', 'bottom'
+    // TODO: implement timeaxis orientations 'left' and 'right'
     this.options.moveable = true;
     this.options.zoomable = true;
     this.options.showMinorLabels = true;
@@ -49,12 +54,13 @@ function TimeAxis (options) {
 
 TimeAxis.prototype = new Component();
 
+// TODO: comment
 TimeAxis.prototype.setOptions = function (options) {
     Component.prototype.setOptions.call(this, options);
 
     if (options.range) {
-        if (!(options.range instanceof Range)) {
-            throw new TypeError('range must be an instance of Range');
+        if (!('start' in options.range) || !('end' in options.range)) {
+            throw new TypeError('range must contain a start and end');
         }
 
         // TODO: first unregister events from an existing range
@@ -69,11 +75,6 @@ TimeAxis.prototype.setOptions = function (options) {
             me.requestRepaint();
         });
     }
-    else {
-        if (options.start || options.end) {
-            this.range.setRange(options.start, options.end);
-        }
-    }
 };
 
 
@@ -85,7 +86,9 @@ TimeAxis.prototype.setOptions = function (options) {
  * @private
  */
 TimeAxis.prototype._updateConversion = function() {
-    this.conversion = this.range.conversion(this.width);
+    if (this.range && this.range.conversion) {
+        this.conversion = this.range.conversion(this.width);
+    }
 };
 
 /**
@@ -121,6 +124,10 @@ TimeAxis.prototype._toScreen = function(time) {
 TimeAxis.prototype.repaint = function () {
     var needReflow = false;
     var options = this.options;
+    var range = this.range;
+    if (!range) {
+        throw new Error('Cannot repaint time axis: no range configured');
+    }
 
     var frame = this.frame;
     if (!frame) {
@@ -128,43 +135,45 @@ TimeAxis.prototype.repaint = function () {
         this.frame = frame;
         needReflow = true;
     }
-    frame.className = 'axis ' + options.mode;
+    frame.className = 'axis ' + options.orientation;
+    // TODO: custom className?
 
     if (!frame.parentNode) {
-        var defaultContainer = this.parent ? this.parent.frame : undefined;
-        var container = Component.toDom(options.container, defaultContainer);
-        if (!container) {
-            throw new Error('Cannot repaint frame: no container attached');
+        if (!this.parent) {
+            throw new Error('Cannot repaint time axis: no parent attached');
         }
-        while (container.firstChild) {
-            container.removeChild(container.firstChild);
+        var parentContainer = this.parent.getContainer();
+        if (!parentContainer) {
+            throw new Error('Cannot repaint time axis: parent has no container element');
         }
-        container.appendChild(frame);
+        parentContainer.appendChild(frame);
+
         needReflow = true;
     }
 
     var parent = frame.parentNode;
     if (parent) {
+        var beforeChild = frame.nextSibling;
         parent.removeChild(frame); //  take frame offline while updating (is almost twice as fast)
 
         // update top
-        var mode = options.mode;
-        var defaultTop = (mode == 'bottom') ? (this.props.parentHeight - this.height) + 'px' : '0';
-        var top = Component.toSize(options.top, defaultTop);
+        var orientation = options.orientation;
+        var defaultTop = (orientation == 'bottom') ? (this.props.parentHeight - this.height) + 'px' : '0';
+        var top = util.option.asSize(options.top, defaultTop);
         if (frame.style.top != top) {
             frame.style.top = top;
             needReflow = true;
         }
 
         // update left
-        var left = Component.toSize(options.left, '0');
+        var left = util.option.asSize(options.left, '0');
         if (frame.style.left != left) {
             frame.style.left = left;
             needReflow = true;
         }
 
         // update width
-        var width = Component.toSize(options.width, '100%');
+        var width = util.option.asSize(options.width, '100%');
         if (frame.style.width != width) {
             frame.style.width = width;
             needReflow = true;
@@ -184,8 +193,8 @@ TimeAxis.prototype.repaint = function () {
         this._updateConversion();
         var minimumStep = this._toTime(charWidth * 5) - this._toTime(0);
         var step = new TimeStep(
-            util.cast(this.range.start, 'Date'),
-            util.cast(this.range.end, 'Date'),
+            util.cast(range.start, 'Date'),
+            util.cast(range.end, 'Date'),
             minimumStep);
 
         this._repaintStart();
@@ -236,7 +245,13 @@ TimeAxis.prototype.repaint = function () {
 
         this._repaintLine();
 
-        parent.appendChild(frame); // put frame online again
+        // put frame online again
+        if (beforeChild) {
+            parent.insertBefore(frame, beforeChild);
+        }
+        else {
+            parent.appendChild(frame)
+        }
     }
 
     if (needReflow) {
@@ -499,7 +514,7 @@ TimeAxis.prototype.reflow = function () {
             props.parentHeight = parentHeight;
             needRepaint = true;
         }
-        switch (this.options.mode) {
+        switch (this.options.orientation) {
             case 'bottom':
                 props.minorLabelHeight = showMinorLabels ? props.minorCharHeight : 0;
                 props.majorLabelHeight = showMajorLabels ? props.majorCharHeight : 0;
@@ -540,7 +555,7 @@ TimeAxis.prototype.reflow = function () {
                 break;
 
             default:
-                throw new Error('Unkown mode "' + this.options.mode + '"');
+                throw new Error('Unkown orientation "' + this.options.orientation + '"');
         }
 
         var height = props.minorLabelHeight + props.majorLabelHeight;

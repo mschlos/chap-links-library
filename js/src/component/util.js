@@ -446,6 +446,81 @@ util.preventDefault = function preventDefault (event) {
 };
 
 
+util.option = {};
+
+/**
+ * Cast a value as boolean
+ * @param {Boolean | function | undefined} value
+ * @param {Boolean} [defaultValue]
+ * @returns {Boolean} bool
+ */
+util.option.asBoolean = function (value, defaultValue) {
+    if (typeof value == 'function') {
+        value = value();
+    }
+
+    if (value != null) {
+        return (value != false);
+    }
+
+    return defaultValue || null;
+};
+
+/**
+ * Cast a value as string
+ * @param {String | function | undefined} value
+ * @param {String} [defaultValue]
+ * @returns {String} str
+ */
+util.option.asString = function (value, defaultValue) {
+    if (typeof value == 'function') {
+        value = value();
+    }
+
+    if (value != null) {
+        return String(value);
+    }
+
+    return defaultValue || null;
+};
+
+/**
+ * Cast a size or location in pixels or a percentage
+ * @param {String | Number | function | undefined} value
+ * @param {String} [defaultValue]
+ * @returns {String} size
+ */
+util.option.asSize = function (value, defaultValue) {
+    if (typeof value == 'function') {
+        value = value();
+    }
+
+    if (util.isString(value)) {
+        return value;
+    }
+    else if (util.isNumber(value)) {
+        return value + 'px';
+    }
+    else {
+        return defaultValue || null;
+    }
+};
+
+/**
+ * Cast a value as DOM element
+ * @param {HTMLElement | function | undefined} value
+ * @param {HTMLElement} [defaultValue]
+ * @returns {HTMLElement | null} dom
+ */
+util.option.asElement = function (value, defaultValue) {
+    if (typeof value == 'function') {
+        value = value();
+    }
+
+    return value || defaultValue || null;
+};
+
+
 // Internet Explorer 8 and older does not support Array.indexOf, so we define
 // it here in that case.
 // http://soledadpenades.com/2007/05/17/arrayindexof-in-internet-explorer/
