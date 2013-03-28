@@ -5,6 +5,7 @@
  * @param {Object} options   Available parameters:
  *                          {Component} parent
  *                          {String} [id]
+ *                          {DataSet} [data]
  *                          {String | function} [className]
  * @constructor ItemSet
  * @extends Component
@@ -12,6 +13,7 @@
 function ItemSet(options) {
     this.id = util.randomUUID();
     this.options = {};
+    this.data = new DataSet();
 
     this.setOptions(options);
 }
@@ -20,30 +22,35 @@ ItemSet.prototype = new Component();
 
 // TODO: comment
 ItemSet.prototype.setOptions = function (options) {
-    Component.prototype.setOptions.call(this, options);
+    if (options.data) {
+        if (!(options.data instanceof DataSet)) {
+            throw new TypeError('data must be of type DataSet');
+        }
+        this.data = options.data;
+    }
 
+    Component.prototype.setOptions.call(this, options);
 };
 
-// TODO: comment
+/**
+ * Repaint the component
+ * @return {Boolean} changed
+ */
 ItemSet.prototype.repaint = function () {
-    var needReflow = false,
+    var changed = false,
         options = this.options,
         frame = this.frame;
+
     if (!frame) {
         frame = document.createElement('div');
         frame.className = 'itemset';
 
         if (options.className) {
-            if (typeof options.className == 'function') {
-                util.addClassName(frame, String(options.className()));
-            }
-            else {
-                util.addClassName(frame, String(options.className));
-            }
+            util.addClassName(frame, util.option.asString(options.className));
         }
 
         this.frame = frame;
-        needReflow = true;
+        changed = true;
     }
     if (!frame.parentNode) {
         if (!this.parent) {
@@ -54,75 +61,75 @@ ItemSet.prototype.repaint = function () {
             throw new Error('Cannot repaint itemset: parent has no container element');
         }
         parentContainer.appendChild(frame);
-        needReflow = true;
+        changed = true;
     }
 
     // update top
     var top = util.option.asSize(options.top, '0');
     if (frame.style.top != top) {
         frame.style.top = top;
-        needReflow = true;
+        changed = true;
     }
 
     // update left
     var left = util.option.asSize(options.left, '0');
     if (frame.style.left != left) {
         frame.style.left = left;
-        needReflow = true;
+        changed = true;
     }
 
     // update width
     var width = util.option.asSize(options.width, '100%');
     if (frame.style.width != width) {
         frame.style.width = width;
-        needReflow = true;
+        changed = true;
     }
 
     // update height
     var height = util.option.asSize(options.height, '100%');
     if (frame.style.height != height) {
         frame.style.height = height;
-        needReflow = true;
+        changed = true;
     }
 
-    if (needReflow) {
-        this.requestReflow();
-    }
+    return changed;
 };
 
+/**
+ * Reflow the component
+ * @return {Boolean} resized
+ */
 ItemSet.prototype.reflow = function () {
-    var needRepaint = false;
+    var resized = false;
     var frame = this.frame;
     if (frame) {
         var top = frame.offsetTop;
         if (top != this.top) {
             this.top = top;
-            needRepaint = true;
+            resized = true;
         }
 
         var left = frame.offsetLeft;
         if (left != this.left) {
             this.left = left;
-            needRepaint = true;
+            resized = true;
         }
 
         var width = frame.offsetWidth;
         if (width != this.width) {
             this.width = width;
-            needRepaint = true;
+            resized = true;
         }
 
         var height = frame.offsetHeight;
         if (height != this.height) {
             this.height = height;
-            needRepaint = true;
+            resized = true;
         }
     }
     else {
-        needRepaint = true;
+        resized = true;
     }
 
-    if (needRepaint) {
-        this.requestRepaint();
-    }
+    return resized;
 };

@@ -5,7 +5,7 @@
     <script src="../lib/moment.min.js"></script>
     <script src="../src/component/util.js"></script>
     <script src="../src/component/events.js"></script>
-    <script src="../src/component/range/range.js"></script>
+    <script src="../src/component/range.js"></script>
     <script src="../src/component/timestep.js"></script>
     <script src="../src/component/dataset.js"></script>
 
@@ -15,6 +15,7 @@
 <body>
     <script>
         var dataset = new DataSet({
+            fieldId: 'id',
             fieldTypes: {
                 start: 'ISODate'
             }

@@ -71,6 +71,8 @@ Controller.prototype.requestRepaint = function () {
  * Repaint all components
  */
 Controller.prototype.repaint = function () {
+    var changed = false;
+
     // cancel any running repaint request
     if (this.repaintTimer) {
         clearTimeout(this.repaintTimer);
@@ -92,15 +94,15 @@ Controller.prototype.repaint = function () {
             }
 
             // repaint the component itself and mark as done
-            component.repaint();
+            changed = component.repaint() || changed;
             done[id] = true;
         }
     }
 
     util.forEach(this.components, repaint);
 
-    // immediately repaint when needed
-    if (this.reflowTimer) {
+    // immediately reflow when needed
+    if (changed) {
         this.reflow();
     }
     // TODO: limit the number of nested reflows/repaints, prevent loop
@@ -110,6 +112,8 @@ Controller.prototype.repaint = function () {
  * Reflow all components
  */
 Controller.prototype.reflow = function () {
+    var resized = false;
+
     // cancel any running repaint request
     if (this.reflowTimer) {
         clearTimeout(this.reflowTimer);
@@ -131,7 +135,7 @@ Controller.prototype.reflow = function () {
             }
 
             // reflow the component itself and mark as done
-            component.reflow();
+            resized = component.reflow() || resized;
             done[id] = true;
         }
     }
@@ -139,7 +143,7 @@ Controller.prototype.reflow = function () {
     util.forEach(this.components, reflow);
 
     // immediately repaint when needed
-    if (this.repaintTimer) {
+    if (resized) {
         this.repaint();
     }
     // TODO: limit the number of nested reflows/repaints, prevent loop

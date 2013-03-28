@@ -17,6 +17,7 @@
 
     <link href="../src/component/css/panel.css" rel="stylesheet" type="text/css" />
     <link href="../src/component/css/timeaxis.css" rel="stylesheet" type="text/css" />
+    <link href="../src/component/css/item.css" rel="stylesheet" type="text/css" />
     <style>
         body, html {
             width: 100%;
@@ -34,7 +35,7 @@
         }
 
         .graph .items {
-            /*background: rgba(255, 255, 0, 0.5);*/
+            background: rgba(255, 255, 0, 0.5);
         }
     </style>
 
@@ -56,38 +57,39 @@
 
         // range
         var range = new Range({
-            start: moment().toDate(),
-            end: moment().add('days', 50).toDate()
+            start: moment().valueOf(),
+            end: moment().add('days', 10).valueOf()
         });
         range.listen(main, 'move', 'horizontal');
         range.listen(main, 'zoom', 'horizontal');
 
         // time axis
         var timeaxis = new TimeAxis({
-            orientation: 'top',
+            //orientation: 'top',
             range: range,
             parent: main
-            /*
-            container: function () {
-                return frame.frame;
-            },
-            left: 100,
-            width: function () {
-                return frame.width - timeaxis.left - 100;
-            },
-            */
-            //depends: [frame]
         });
-        /*
-        timeaxis.on('click', function (event) {
-            console.log('click', event);
-        });
-        */
         controller.add(timeaxis);
 
+        // create a dataset with items
+        var dataset = new DataSet({
+            fieldTypes: {
+                start: 'Date'
+            }
+        });
+        dataset.put([
+            {id: 1, content: 'item 1', start: moment().toDate()},
+            {id: 2, content: 'item 2', start: moment().add('days', 4).toDate() },
+            {id: 3, content: 'item 3', start: moment().add('days', 5).toDate()},
+            {id: 4, content: 'item 4', start: moment().add('days', -2).toDate(), end: moment().add('days', 7).toDate()},
+            {id: 5, content: 'item 5', start: moment().add('days', 9).toDate()}
+        ]);
+
         // items panel
-        var items = new Panel({
+        var items = new ItemSet({
             parent: main,
+            depends: [timeaxis],
+            data: dataset,
             className: 'items',
             height: function () {
                 return main.height - timeaxis.height;

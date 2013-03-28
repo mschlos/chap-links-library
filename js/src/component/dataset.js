@@ -3,7 +3,7 @@
  *
  * Usage:
  *     var dataSet = new DataSet({
- *         id: '_id',
+ *         fieldId: '_id',
  *         fieldTypes: {
  *             // ...
  *         }
@@ -26,7 +26,7 @@
  * - gives triggers upon changes in the data
  * - can  import/export data in various data formats
  * @param {Object} [options]   Available options:
- *                             {String} id      Field name of the id in the
+ *                             {String} fieldId Field name of the id in the
  *                                              items, 'id' by default.
  *                             {Object.<String, String} fieldTypes
  *                                              A map with field names as key,
@@ -36,11 +36,12 @@ function DataSet (options) {
     var me = this;
 
     this.options = options || {};
-    this.data = {};                         // map with data indexed by id
-    this.idField = this.options.id || 'id'; // field name of the id
-    this.fieldTypes = {};                   // field types by field name
-    if (options.fieldTypes) {
-        util.forEach(options.fieldTypes, function (value, field) {
+    this.data = {};                                 // map with data indexed by id
+    this.fieldId = this.options.fieldId || 'id';    // name of the field containing id
+    this.fieldTypes = {};                           // field types by field name
+
+    if (this.options.fieldTypes) {
+        util.forEach(this.options.fieldTypes, function (value, field) {
             if (value == 'Date' || value == 'ISODate' || value == 'ASPDate') {
                 me.fieldTypes[field] = 'Date';
             }
@@ -379,11 +380,11 @@ DataSet.prototype.clear = function (senderId) {
  * @private
  */
 DataSet.prototype._setItem = function (item) {
-    var id = item[this.idField];
+    var id = item[this.fieldId];
     if (id == undefined) {
         // generate an id
         id = util.randomUUID();
-        item[this.idField] = id;
+        item[this.fieldId] = id;
 
         this.internalIds[id] = item;
     }
@@ -409,23 +410,33 @@ DataSet.prototype._setItem = function (item) {
  * @private
  */
 DataSet.prototype._castItem = function (item, fieldTypes, fields) {
-    var clone = null;
+    var clone,
+        fieldId = this.fieldId,
+        internalIds = this.internalIds;
+
     if (item) {
-        fieldTypes = fieldTypes || {};
-
         clone = {};
-        for (var field in item) {
-            if (item.hasOwnProperty(field)) {
-                if (!fields || (fields.indexOf(field) != -1)) {
-                    clone[field] = util.cast(item[field], fieldTypes[field]);
+        fieldTypes = fieldTypes || {};
+        
+        if (fields) {
+            // output filtered fields
+            util.forEach(item, function (value, field) {
+                if (fields.indexOf(field) != -1) {
+                    clone[field] = util.cast(value, fieldTypes[field]);
                 }
-            }
+            });
         }
-
-        // do not output internally generated id's
-        if (item[this.idField] in this.internalIds) {
-            delete clone[this.idField];
+        else {
+            // output all fields, except internal ids
+            util.forEach(item, function (value, field) {
+                if (field != fieldId || !(value in internalIds)) {
+                    clone[field] = util.cast(value, fieldTypes[field]);
+                }
+            });
         }
+    }
+    else {
+        clone = null;
     }
 
     return clone;
@@ -438,9 +449,9 @@ DataSet.prototype._castItem = function (item, fieldTypes, fields) {
  * @private
  */
 DataSet.prototype._updateItem = function (item) {
-    var id = item[this.idField];
+    var id = item[this.fieldId];
     if (id == undefined) {
-        throw new Error('Item has no id item: ' + JSON.stringify(item));
+        throw new Error('Item has no id (item: ' + JSON.stringify(item) + ')');
     }
     var d = this.data[id];
     if (d) {

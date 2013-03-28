@@ -68,12 +68,22 @@ Component.prototype.getContainer = function () {
     return null;
 };
 
-Component.prototype.repaint = function (props) {
+/**
+ * Repaint the component
+ * @return {Boolean} changed
+ */
+Component.prototype.repaint = function () {
     // should be implemented by the component
+    return false;
 };
 
-Component.prototype.reflow = function (props) {
+/**
+ * Reflow the component
+ * @return {Boolean} resized
+ */
+Component.prototype.reflow = function () {
     // should be implemented by the component
+    return false;
 };
 
 /**

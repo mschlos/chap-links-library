@@ -5,14 +5,7 @@
  *                          {Component} parent
  *                          {Component[]} [depends]   Components on which this
  *                                                    component depends on
- *                          {String | Number | function} [left]
- *                          {String | Number | function} [top]
- *                          {String | Number | function} [width]
- *                          {String | Number | function} [height]
  *                          {Range | {start:number, end:number} } [range]
- *                          {Date} [start]
- *                          {Date} [end]
- *                          {Number} [step]
  * @constructor TimeAxis
  * @extends Component
  */
@@ -59,21 +52,26 @@ TimeAxis.prototype.setOptions = function (options) {
     Component.prototype.setOptions.call(this, options);
 
     if (options.range) {
-        if (!('start' in options.range) || !('end' in options.range)) {
-            throw new TypeError('range must contain a start and end');
+        if (options.range instanceof Range) {
+            this.range = options.range;
+
+            // TODO: first unregister events from an existing range
+
+            var me = this;
+            this.range.on('rangechange', function () {
+                me.requestRepaint();
+            });
+            this.range.on('rangechanged', function () {
+                me.requestRepaint();
+            });
         }
+        else {
+            if (!('start' in options.range) || !('end' in options.range)) {
+                throw new TypeError('range must contain a start and end');
+            }
 
-        // TODO: first unregister events from an existing range
-
-        this.range = options.range;
-
-        var me = this;
-        this.range.on('rangechange', function () {
-            me.requestRepaint();
-        });
-        this.range.on('rangechanged', function () {
-            me.requestRepaint();
-        });
+            this.range = options.range;
+        }
     }
 };
 
@@ -86,8 +84,13 @@ TimeAxis.prototype.setOptions = function (options) {
  * @private
  */
 TimeAxis.prototype._updateConversion = function() {
-    if (this.range && this.range.conversion) {
-        this.conversion = this.range.conversion(this.width);
+    if (this.range) {
+        if (this.range.conversion) {
+            this.conversion = this.range.conversion(this.width);
+        }
+        else {
+            this.conversion = Range.conversion(this.range.start, this.range.end, this.width);
+        }
     }
 };
 
@@ -119,10 +122,11 @@ TimeAxis.prototype._toScreen = function(time) {
 };
 
 /**
- * Repaint the time axis
+ * Repaint the component
+ * @return {Boolean} changed
  */
 TimeAxis.prototype.repaint = function () {
-    var needReflow = false;
+    var changed = false;
     var options = this.options;
     var range = this.range;
     if (!range) {
@@ -133,7 +137,7 @@ TimeAxis.prototype.repaint = function () {
     if (!frame) {
         frame = document.createElement('div');
         this.frame = frame;
-        needReflow = true;
+        changed = true;
     }
     frame.className = 'axis ' + options.orientation;
     // TODO: custom className?
@@ -148,7 +152,7 @@ TimeAxis.prototype.repaint = function () {
         }
         parentContainer.appendChild(frame);
 
-        needReflow = true;
+        changed = true;
     }
 
     var parent = frame.parentNode;
@@ -162,21 +166,21 @@ TimeAxis.prototype.repaint = function () {
         var top = util.option.asSize(options.top, defaultTop);
         if (frame.style.top != top) {
             frame.style.top = top;
-            needReflow = true;
+            changed = true;
         }
 
         // update left
         var left = util.option.asSize(options.left, '0');
         if (frame.style.left != left) {
             frame.style.left = left;
-            needReflow = true;
+            changed = true;
         }
 
         // update width
         var width = util.option.asSize(options.width, '100%');
         if (frame.style.width != width) {
             frame.style.width = width;
-            needReflow = true;
+            changed = true;
         }
 
         // update height
@@ -186,7 +190,7 @@ TimeAxis.prototype.repaint = function () {
         this._repaintMeasureChars();
         var charWidth = this.props.minorCharWidth || 10;
         if (!('minorCharWidth' in this.props)) {
-            needReflow = true;
+            changed = true;
         }
 
         // calculate best step
@@ -254,9 +258,7 @@ TimeAxis.prototype.repaint = function () {
         }
     }
 
-    if (needReflow) {
-        this.requestReflow();
-    }
+    return changed;
 };
 
 var avg = 10;
@@ -470,28 +472,29 @@ TimeAxis.prototype._repaintMeasureChars = function () {
 };
 
 /**
- * Reflow the time axis
+ * Reflow the component
+ * @return {Boolean} resized
  */
 TimeAxis.prototype.reflow = function () {
-    var needRepaint = false;
+    var resized = false;
     var frame = this.frame;
     if (frame) {
         var top = frame.offsetTop;
         if (top != this.top) {
             this.top = top;
-            needRepaint = true;
+            resized = true;
         }
 
         var left = frame.offsetLeft;
         if (left != this.left) {
             this.left = left;
-            needRepaint = true;
+            resized = true;
         }
 
         var width = frame.offsetWidth;
         if (width != this.width) {
             this.width = width;
-            needRepaint = true;
+            resized = true;
         }
 
         // calculate size of a character
@@ -512,7 +515,7 @@ TimeAxis.prototype.reflow = function () {
         var parentHeight = frame.parentNode ? frame.parentNode.offsetHeight : 0;
         if (parentHeight != props.parentHeight) {
             props.parentHeight = parentHeight;
-            needRepaint = true;
+            resized = true;
         }
         switch (this.options.orientation) {
             case 'bottom':
@@ -561,13 +564,11 @@ TimeAxis.prototype.reflow = function () {
         var height = props.minorLabelHeight + props.majorLabelHeight;
         if (height != this.height) {
             this.height = height;
-            needRepaint = true;
+            resized = true;
         }
 
         this._updateConversion();
     }
 
-    if (needRepaint) {
-        this.requestRepaint();
-    }
+    return resized;
 };

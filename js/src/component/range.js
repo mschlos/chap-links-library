@@ -153,6 +153,18 @@ Range.prototype.conversion = function (width) {
     var start = this.start;
     var end = this.end;
 
+    return Range.conversion(this.start, this.end, width);
+};
+
+/**
+ * Static method to calculate the conversion offset and factor for a range,
+ * based on the provided start, end, and width
+ * @param {Number} start
+ * @param {Number} end
+ * @param {Number} width
+ * @returns {{offset: number, factor: number}} conversion
+ */
+Range.conversion = function (start, end, width) {
     if (width != 0 && (end - start != 0)) {
         return {
             offset: start,

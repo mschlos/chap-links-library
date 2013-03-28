@@ -12,7 +12,7 @@
  *                              {String | Number | function} [height]
  *                              {Boolean | function} [autoResize]
  * @constructor RootPanel
- * @extends Component
+ * @extends Panel
  */
 function RootPanel(options) {
     this.id = util.randomUUID();
@@ -41,9 +41,12 @@ RootPanel.prototype.setOptions = function (options) {
     Component.prototype.setOptions.call(this, options);
 };
 
-// TODO: comment
+/**
+ * Repaint the component
+ * @return {Boolean} changed
+ */
 RootPanel.prototype.repaint = function () {
-    var needReflow = false,
+    var changed = false,
         options = this.options,
         frame = this.frame;
     if (!frame) {
@@ -55,86 +58,86 @@ RootPanel.prototype.repaint = function () {
         }
 
         this.frame = frame;
-        needReflow = true;
+        changed = true;
     }
     if (!frame.parentNode) {
         if (!this.options.container) {
             throw new Error('Cannot repaint root panel: no container attached');
         }
         this.options.container.appendChild(frame);
-        needReflow = true;
+        changed = true;
     }
 
     // update top
     var top = util.option.asSize(options.top, '0');
     if (frame.style.top != top) {
         frame.style.top = top;
-        needReflow = true;
+        changed = true;
     }
 
     // update left
     var left = util.option.asSize(options.left, '0');
     if (frame.style.left != left) {
         frame.style.left = left;
-        needReflow = true;
+        changed = true;
     }
 
     // update width
     var width = util.option.asSize(options.width, '100%');
     if (frame.style.width != width) {
         frame.style.width = width;
-        needReflow = true;
+        changed = true;
     }
 
     // update height
     var height = util.option.asSize(options.height, '100%');
     if (frame.style.height != height) {
         frame.style.height = height;
-        needReflow = true;
+        changed = true;
     }
 
     this._updateEventEmitters();
 
-    if (needReflow) {
-        this.requestReflow();
-    }
+    return changed;
 };
 
+/**
+ * Reflow the component
+ * @return {Boolean} resized
+ */
 RootPanel.prototype.reflow = function () {
-    var needRepaint = false;
+    var resized = false;
     var frame = this.frame;
     if (frame) {
         var top = frame.offsetTop;
         if (top != this.top) {
             this.top = top;
-            needRepaint = true;
+            resized = true;
         }
 
         var left = frame.offsetLeft;
         if (left != this.left) {
             this.left = left;
-            needRepaint = true;
+            resized = true;
         }
 
         var width = frame.offsetWidth;
         if (width != this.width) {
             this.width = width;
-            needRepaint = true;
+            resized = true;
         }
 
         var height = frame.offsetHeight;
         if (height != this.height) {
             this.height = height;
-            needRepaint = true;
+            resized = true;
         }
     }
     else {
-        needRepaint = true;
+        resized = true;
     }
 
-    if (needRepaint) {
-        this.requestRepaint();
-    }
+    return resized;
 };
 
 /**
