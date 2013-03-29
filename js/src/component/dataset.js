@@ -9,8 +9,8 @@
  *         }
  *     });
  *
- *     dataSet.put(item);
- *     dataSet.put(data);
+ *     dataSet.add(item);
+ *     dataSet.add(data);
  *     dataSet.update(item);
  *     dataSet.update(data);
  *     dataSet.remove(id);
@@ -130,7 +130,7 @@ DataSet.prototype._trigger = function (event, params, senderId) {
  * @param {String} [senderId] Optional sender id, used to trigger events for
  *                            all but this sender's event subscribers.
  */
-DataSet.prototype.put = function (data, senderId) {
+DataSet.prototype.add = function (data, senderId) {
     var items = [],
         id,
         me = this;
@@ -138,7 +138,7 @@ DataSet.prototype.put = function (data, senderId) {
     if (data instanceof Array) {
         // Array
         data.forEach(function (item) {
-            var id = me._setItem(item);
+            var id = me._addItem(item);
             items.push(id);
         });
     }
@@ -150,20 +150,20 @@ DataSet.prototype.put = function (data, senderId) {
             columns.forEach(function (field, col) {
                 item[field] = data.getValue(row, col);
             });
-            id = me._setItem(item);
+            id = me._addItem(item);
             items.push(id);
         }
     }
     else if (data instanceof Object) {
         // Single item
-        id = me._setItem(data);
+        id = me._addItem(data);
         items.push(id);
     }
     else {
         throw new Error('Unknown dataType');
     }
 
-    this._trigger('put', {items: items}, senderId);
+    this._trigger('add', {items: items}, senderId);
 };
 
 /**
@@ -374,12 +374,12 @@ DataSet.prototype.clear = function (senderId) {
 };
 
 /**
- * Set a single item
+ * Add a single item
  * @param {Object} item
  * @return {String} id
  * @private
  */
-DataSet.prototype._setItem = function (item) {
+DataSet.prototype._addItem = function (item) {
     var id = item[this.fieldId];
     if (id == undefined) {
         // generate an id
@@ -397,6 +397,7 @@ DataSet.prototype._setItem = function (item) {
         }
     }
     this.data[id] = d;
+    //TODO: fail when an item with this id already exists?
 
     return id;
 };
@@ -465,7 +466,7 @@ DataSet.prototype._updateItem = function (item) {
     }
     else {
         // create new item
-        this._setItem(item);
+        this._addItem(item);
     }
 
     return id;

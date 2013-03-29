@@ -33,7 +33,7 @@
         }, entityId);
 
         // anonymous put
-        dataset.put([
+        dataset.add([
             {id: 1, content: 'item 1', start: new Date()},
             {id: 2, content: 'item 2', start: (new Date()).valueOf()},
             {id: '3', content: 'item 3', start: (new Date()).toISOString()},
@@ -70,7 +70,7 @@
                 [new Date(2010,8,4,12,0,0), , 'Report<br>' +
                         '<img src="img/attachment-icon.png" style="width:32px; height:32px;">']
             ]);
-            dataset.put(table);
+            dataset.add(table);
         });
 
     </script>

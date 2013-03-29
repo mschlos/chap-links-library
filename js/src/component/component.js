@@ -33,7 +33,10 @@ Component.prototype.setOptions = function(options) {
         util.forEach(options, function (value, key) {
             switch (key) {
                 case 'id':
-                    me.id = value;
+                    // id can be set only once
+                    if (me.id == null) {
+                        me.id = value;
+                    }
                     break;
 
                 case 'depends':

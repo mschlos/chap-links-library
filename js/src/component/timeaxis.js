@@ -26,10 +26,7 @@ function TimeAxis (options) {
     };
     this.props = {};
     this.options = {};
-    this.conversion = {
-        offset: 0,
-        factor: 1
-    };
+    this.conversion = null;
     this.range = null;
 
     // default configuration
