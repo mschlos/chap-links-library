@@ -340,6 +340,7 @@ links.Timeline.prototype.addItemType = function (typeName, typeFactory) {
  *         content: 2,
  *         group: undefined,
  *         className: undefined
+ *         editable: undefined
  *     }
  * @param {google.visualization.DataTable} dataTable
  * @type {Object} map
@@ -2127,7 +2128,9 @@ links.Timeline.prototype.repaintNavigation = function () {
         navBar = dom.navBar;
 
     if (!navBar) {
-        if (options.showNavigation || options.showButtonNew) {
+        var showButtonNew = options.showButtonNew && options.editable;
+        var showNavigation = options.showNavigation && (options.zoomable || options.moveable);
+        if (showNavigation || showButtonNew) {
             // create a navigation bar containing the navigation buttons
             navBar = document.createElement("DIV");
             navBar.style.position = "absolute";
@@ -2148,7 +2151,7 @@ links.Timeline.prototype.repaintNavigation = function () {
             frame.appendChild(navBar);
         }
 
-        if (options.editable && options.showButtonNew) {
+        if (showButtonNew) {
             // create a new in button
             navBar.addButton = document.createElement("DIV");
             navBar.addButton.className = "timeline-navigation-new";
@@ -2201,68 +2204,72 @@ links.Timeline.prototype.repaintNavigation = function () {
             navBar.appendChild(navBar.addButton);
         }
 
-        if (options.editable && options.showButtonNew && options.showNavigation) {
+        if (showButtonNew && showNavigation) {
             // create a separator line
             navBar.addButton.style.borderRightWidth = "1px";
             navBar.addButton.style.borderRightStyle = "solid";
         }
 
-        if (options.showNavigation) {
-            // create a zoom in button
-            navBar.zoomInButton = document.createElement("DIV");
-            navBar.zoomInButton.className = "timeline-navigation-zoom-in";
-            navBar.zoomInButton.title = "Zoom in";
-            var onZoomIn = function(event) {
-                links.Timeline.preventDefault(event);
-                links.Timeline.stopPropagation(event);
-                timeline.zoom(0.4);
-                timeline.trigger("rangechange");
-                timeline.trigger("rangechanged");
-            };
-            links.Timeline.addEventListener(navBar.zoomInButton, "mousedown", onZoomIn);
-            navBar.appendChild(navBar.zoomInButton);
+        if (showNavigation) {
+            if (options.zoomable) {
+                // create a zoom in button
+                navBar.zoomInButton = document.createElement("DIV");
+                navBar.zoomInButton.className = "timeline-navigation-zoom-in";
+                navBar.zoomInButton.title = "Zoom in";
+                var onZoomIn = function(event) {
+                    links.Timeline.preventDefault(event);
+                    links.Timeline.stopPropagation(event);
+                    timeline.zoom(0.4);
+                    timeline.trigger("rangechange");
+                    timeline.trigger("rangechanged");
+                };
+                links.Timeline.addEventListener(navBar.zoomInButton, "mousedown", onZoomIn);
+                navBar.appendChild(navBar.zoomInButton);
 
-            // create a zoom out button
-            navBar.zoomOutButton = document.createElement("DIV");
-            navBar.zoomOutButton.className = "timeline-navigation-zoom-out";
-            navBar.zoomOutButton.title = "Zoom out";
-            var onZoomOut = function(event) {
-                links.Timeline.preventDefault(event);
-                links.Timeline.stopPropagation(event);
-                timeline.zoom(-0.4);
-                timeline.trigger("rangechange");
-                timeline.trigger("rangechanged");
-            };
-            links.Timeline.addEventListener(navBar.zoomOutButton, "mousedown", onZoomOut);
-            navBar.appendChild(navBar.zoomOutButton);
+                // create a zoom out button
+                navBar.zoomOutButton = document.createElement("DIV");
+                navBar.zoomOutButton.className = "timeline-navigation-zoom-out";
+                navBar.zoomOutButton.title = "Zoom out";
+                var onZoomOut = function(event) {
+                    links.Timeline.preventDefault(event);
+                    links.Timeline.stopPropagation(event);
+                    timeline.zoom(-0.4);
+                    timeline.trigger("rangechange");
+                    timeline.trigger("rangechanged");
+                };
+                links.Timeline.addEventListener(navBar.zoomOutButton, "mousedown", onZoomOut);
+                navBar.appendChild(navBar.zoomOutButton);
+            }
 
-            // create a move left button
-            navBar.moveLeftButton = document.createElement("DIV");
-            navBar.moveLeftButton.className = "timeline-navigation-move-left";
-            navBar.moveLeftButton.title = "Move left";
-            var onMoveLeft = function(event) {
-                links.Timeline.preventDefault(event);
-                links.Timeline.stopPropagation(event);
-                timeline.move(-0.2);
-                timeline.trigger("rangechange");
-                timeline.trigger("rangechanged");
-            };
-            links.Timeline.addEventListener(navBar.moveLeftButton, "mousedown", onMoveLeft);
-            navBar.appendChild(navBar.moveLeftButton);
+            if (options.moveable) {
+                // create a move left button
+                navBar.moveLeftButton = document.createElement("DIV");
+                navBar.moveLeftButton.className = "timeline-navigation-move-left";
+                navBar.moveLeftButton.title = "Move left";
+                var onMoveLeft = function(event) {
+                    links.Timeline.preventDefault(event);
+                    links.Timeline.stopPropagation(event);
+                    timeline.move(-0.2);
+                    timeline.trigger("rangechange");
+                    timeline.trigger("rangechanged");
+                };
+                links.Timeline.addEventListener(navBar.moveLeftButton, "mousedown", onMoveLeft);
+                navBar.appendChild(navBar.moveLeftButton);
 
-            // create a move right button
-            navBar.moveRightButton = document.createElement("DIV");
-            navBar.moveRightButton.className = "timeline-navigation-move-right";
-            navBar.moveRightButton.title = "Move right";
-            var onMoveRight = function(event) {
-                links.Timeline.preventDefault(event);
-                links.Timeline.stopPropagation(event);
-                timeline.move(0.2);
-                timeline.trigger("rangechange");
-                timeline.trigger("rangechanged");
-            };
-            links.Timeline.addEventListener(navBar.moveRightButton, "mousedown", onMoveRight);
-            navBar.appendChild(navBar.moveRightButton);
+                // create a move right button
+                navBar.moveRightButton = document.createElement("DIV");
+                navBar.moveRightButton.className = "timeline-navigation-move-right";
+                navBar.moveRightButton.title = "Move right";
+                var onMoveRight = function(event) {
+                    links.Timeline.preventDefault(event);
+                    links.Timeline.stopPropagation(event);
+                    timeline.move(0.2);
+                    timeline.trigger("rangechange");
+                    timeline.trigger("rangechanged");
+                };
+                links.Timeline.addEventListener(navBar.moveRightButton, "mousedown", onMoveRight);
+                navBar.appendChild(navBar.moveRightButton);
+            }
         }
     }
 };
@@ -4267,7 +4274,9 @@ links.Timeline.ItemDot.prototype.getRight = function (timeline) {
  *                              {Date} start (required),
  *                              {Date} end (optional),
  *                              {String} content (required),
- *                              {String} group (optional)
+ *                              {String} group (optional),
+ *                              {String} className (optional)
+ *                              {boolean} editable (optional)
  */
 links.Timeline.prototype.getItem = function (index) {
     if (index >= this.items.length) {
@@ -4284,6 +4293,12 @@ links.Timeline.prototype.getItem = function (index) {
     properties.content = item.content;
     if (item.group) {
         properties.group = this.getGroupName(item.group);
+    }
+    if ('className' in item) {
+        properties.className = this.getGroupName(item.className);
+    }
+    if (item.hasOwnProperty('editable') && (typeof item.editable != 'undefined')) {
+        properties.editable = item.editable;
     }
 
     return properties;
@@ -4403,7 +4418,8 @@ links.Timeline.prototype.changeItem = function (index, itemData, preventRender) 
         'end':     itemData.hasOwnProperty('end') ?     itemData.end :     oldItem.end,
         'content': itemData.hasOwnProperty('content') ? itemData.content : oldItem.content,
         'group':   itemData.hasOwnProperty('group') ?   itemData.group :   this.getGroupName(oldItem.group),
-        'className': itemData.hasOwnProperty('className') ? itemData.className : oldItem.className
+        'className': itemData.hasOwnProperty('className') ? itemData.className : oldItem.className,
+        'editable': itemData.hasOwnProperty('editable') ? itemData.editable : oldItem.editable
     });
     this.items[index] = newItem;
 
