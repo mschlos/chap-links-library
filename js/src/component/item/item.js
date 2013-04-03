@@ -1,8 +1,8 @@
 
 /**
  * @constructor Item
- * @param {Object} data       Object containing parameters start, end
- *                            content, group.
+ * @param {Object} data       Object containing (optional) parameters type,
+ *                            start, end, content, group, className.
  * @param {Object} [options]  Options to set initial property values
  *                            // TODO: describe available options
  */
@@ -29,3 +29,6 @@ Item.prototype.select = function () {
 Item.prototype.unselect = function () {
     this.selected = false;
 };
+
+// create a namespace for all item types
+var itemTypes = {};

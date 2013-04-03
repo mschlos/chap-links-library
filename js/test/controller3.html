@@ -16,6 +16,8 @@
     <script src="../src/component/itemset.js"></script>
     <script src="../src/component/item/item.js"></script>
     <script src="../src/component/item/itembox.js"></script>
+    <script src="../src/component/item/itemrange.js"></script>
+    <script src="../src/component/item/itempoint.js"></script>
 
     <link href="../src/component/css/panel.css" rel="stylesheet" type="text/css" />
     <link href="../src/component/css/timeaxis.css" rel="stylesheet" type="text/css" />
@@ -62,9 +64,10 @@
         controller.add(main);
 
         // range
+        var now = moment().minutes(0).seconds(0).milliseconds(0);
         var range = new Range({
-            start: moment().add('days', -3).valueOf(),
-            end: moment().add('days', 10).valueOf()
+            start: now.clone().add('days', -3).valueOf(),
+            end: now.clone().add('days', 10).valueOf()
         });
         range.listen(main, 'move', 'horizontal');
         range.listen(main, 'zoom', 'horizontal');
@@ -84,11 +87,12 @@
             }
         });
         dataset.add([
-            {id: 1, content: 'item 1', start: moment().toDate()},
-            {id: 2, content: 'item 2', start: moment().add('days', 4).toDate() },
-            {id: 3, content: 'item 3', start: moment().add('days', 5).toDate()},
-            {id: 4, content: 'item 4', start: moment().add('days', -2).toDate(), end: moment().add('days', 7).toDate()},
-            {id: 5, content: 'item 5', start: moment().add('days', 9).toDate()}
+            {id: 1, content: 'item 1', start: now.clone().toDate()},
+            {id: 2, content: 'item 2', start: now.clone().add('days', 4).toDate() },
+            {id: 3, content: 'item 3', start: now.clone().add('days', 5).toDate()},
+            {id: 4, content: 'item 4', start: now.clone().add('days', -2).toDate(), end: now.clone().add('days', 7).toDate()},
+            {id: 5, content: 'item 5', start: now.clone().add('days', 9).toDate(), type:'point'},
+            {id: 6, content: 'item 6', start: now.clone().add('days', 11).toDate()}
         ]);
 
         // items panel

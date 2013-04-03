@@ -1,5 +1,5 @@
 /**
- * @constructor ItemBox
+ * @constructor ItemPoint
  * @extends Item
  * @param {Object} data       Object containing parameters start
  *                            content, className.
@@ -7,26 +7,22 @@
  *                              {ItemSet} parent
  *                            // TODO: describe available options
  */
-function ItemBox (data, options) {
-    this.props = {
-        dotHeight: 0,
-        dotWidth: 0,
-        lineWidth: 0
-    };
+function ItemPoint (data, options) {
+    this.props = {};
 
     Item.call(this, data, options);
 }
 
-ItemBox.prototype = new Item (null);
+ItemPoint.prototype = new Item (null);
 
-// register the ItemBox in the item types
-itemTypes['box'] = ItemBox;
+// register the ItemPoint in the item types
+itemTypes['point'] = ItemPoint;
 
 /**
  * Select the item
  * @override
  */
-ItemBox.prototype.select = function () {
+ItemPoint.prototype.select = function () {
     this.selected = true;
     // TODO: select and unselect
 };
@@ -35,7 +31,7 @@ ItemBox.prototype.select = function () {
  * Unselect the item
  * @override
  */
-ItemBox.prototype.unselect = function () {
+ItemPoint.prototype.unselect = function () {
     this.selected = false;
     // TODO: select and unselect
 };
@@ -44,7 +40,7 @@ ItemBox.prototype.unselect = function () {
  * Repaint the item
  * @return {Boolean} changed
  */
-ItemBox.prototype.repaint = function () {
+ItemPoint.prototype.repaint = function () {
     // TODO: make an efficient repaint
     var changed = false;
     var dom = this.dom;
@@ -65,16 +61,8 @@ ItemBox.prototype.repaint = function () {
                 throw new Error('Cannot repaint time axis: parent has no container element');
             }
 
-            if (!dom.box.parentNode) {
-                parentContainer.appendChild(dom.box);
-                changed = true;
-            }
-            if (!dom.line.parentNode) {
-                parentContainer.appendChild(dom.line);
-                changed = true;
-            }
-            if (!dom.dot.parentNode) {
-                parentContainer.appendChild(dom.dot);
+            if (!dom.point.parentNode) {
+                parentContainer.appendChild(dom.point);
                 changed = true;
             }
 
@@ -94,25 +82,15 @@ ItemBox.prototype.repaint = function () {
             // update class
             var className = (this.data.className? ' ' + this.data.className : '') +
                 (this.selected ? ' selected' : '');
-            dom.box.className = 'item box' + className;
-            dom.line.className = 'item line' + className;
-            dom.dot.className  = 'item dot' + className;
+            dom.point.className  = 'item point' + className;
             // TODO: check whether the classname is changed, if so set changed to true
         }
     }
     else {
         // hide when visible
         if (dom) {
-            if (dom.box.parentNode) {
-                dom.box.parentNode.removeChild(dom.box);
-                changed = true;
-            }
-            if (dom.line.parentNode) {
-                dom.line.parentNode.removeChild(dom.line);
-                changed = true;
-            }
-            if (dom.dot.parentNode) {
-                dom.dot.parentNode.removeChild(dom.dot);
+            if (dom.point.parentNode) {
+                dom.point.parentNode.removeChild(dom.point);
                 changed = true;
             }
         }
@@ -126,13 +104,13 @@ ItemBox.prototype.repaint = function () {
  * @return {boolean} resized    returns true if the axis is resized
  * @override
  */
-ItemBox.prototype.reflow = function () {
+ItemPoint.prototype.reflow = function () {
     var dom = this.dom,
         props = this.props,
         resized;
 
     if (dom) {
-        var box = dom.box;
+        var point = dom.point;
 
         var dotHeight = dom.dot.offsetHeight;
         if (dotHeight != props.dotHeight) {
@@ -146,31 +124,31 @@ ItemBox.prototype.reflow = function () {
             resized = true;
         }
 
-        var lineWidth = dom.line.offsetWidth;
-        if (lineWidth != props.lineWidth) {
-            props.lineWidth = lineWidth;
+        var contentHeight = dom.content.offsetHeight;
+        if (contentHeight != props.contentHeight) {
+            props.contentHeight = contentHeight;
             resized = true;
         }
 
-        var top = box.offsetTop;
+        var top = point.offsetTop;
         if (top != this.top) {
             this.top = top;
             resized = true;
         }
 
-        var left = box.offsetLeft;
+        var left = point.offsetLeft;
         if (left != this.left) {
             this.left = left;
             resized = true;
         }
 
-        var width = box.offsetWidth;
+        var width = point.offsetWidth;
         if (width != this.width) {
             this.width = width;
             resized = true;
         }
 
-        var height = box.offsetHeight;
+        var height = point.offsetHeight;
         if (height != this.height) {
             this.height = height;
             resized = true;
@@ -187,29 +165,24 @@ ItemBox.prototype.reflow = function () {
  * Create an items DOM
  * @private
  */
-ItemBox.prototype._create = function () {
+ItemPoint.prototype._create = function () {
     var dom = this.dom;
     if (!dom) {
         this.dom = dom = {};
 
-        // create the box
-        dom.box = document.createElement('DIV');
+        // background box
+        dom.point = document.createElement('div');
         // className is updated in repaint()
 
-        // contents box (inside the background box). used for making margins
-        dom.content = document.createElement('DIV');
+        // contents box, right from the dot
+        dom.content = document.createElement('div');
         dom.content.className = 'content';
-        dom.box.appendChild(dom.content);
+        dom.point.appendChild(dom.content);
 
-        // line to axis
-        dom.line = document.createElement('DIV');
-        dom.line.className = 'line';
-        // TODO: draw the lines in a separate div 'background',
-        // so the lines will be drawn behind all boxes and ranges
-
-        // dot on axis
-        dom.dot = document.createElement('DIV');
-        dom.dot.className = 'dot';
+        // dot at start
+        dom.dot = document.createElement('div');
+        dom.dot.className  = 'dot';
+        dom.point.appendChild(dom.dot);
     }
 };
 
@@ -218,51 +191,21 @@ ItemBox.prototype._create = function () {
  * range and size of the items itemset
  * @override
  */
-ItemBox.prototype.reposition = function () {
+ItemPoint.prototype.reposition = function () {
     var dom = this.dom,
         props = this.props;
     if (dom) {
         var options = this.options,
-            start = this.data && options.parent._toScreen(this.data.start),
-            align = options && options.align,
-            orientation = options.orientation,
-            box = dom.box,
-            line = dom.line,
-            dot = dom.dot;
+            start = this.data && options.parent._toScreen(this.data.start);
 
         // TODO: check whether start is defined
         // TODO: check whether align is defined
 
-        var parentHeight = options.parent.height;
-        var top;
+        dom.point.style.top = this.top + 'px';
+        dom.point.style.left = (start - props.dotWidth / 2) + 'px';
 
-        if (align == 'right') {
-            box.style.left = (start - this.width) + 'px';
-        }
-        else if (align == 'left') {
-            box.style.left = (start) + 'px';
-        }
-        else { // default or 'center'
-            box.style.left = (start - this.width / 2) + 'px';
-        }
-
-        line.style.left = (start - props.lineWidth / 2) + 'px';
-        dot.style.left = (start - props.dotWidth / 2) + 'px';
-        if (orientation == 'top') {
-            top = options.margin;
-
-            box.style.top = top + 'px';
-            line.style.top = '0';
-            line.style.height = top + 'px';
-            dot.style.top = (-props.dotHeight / 2) + 'px';
-        }
-        else {
-            top = parentHeight - this.height - options.margin;
-
-            box.style.top = top + 'px';
-            line.style.top = (top + this.height) + 'px';
-            line.style.height = Math.max(parentHeight - top - this.height, 0) + 'px';
-            dot.style.top = (parentHeight - props.dotHeight / 2) + 'px';
-        }
+        dom.content.style.marginLeft = (1.5 * props.dotWidth) + 'px';
+        //dom.content.style.marginRight = (0.5 * this.dotWidth) + 'px'; // TODO
+        dom.dot.style.top = ((this.height - props.dotHeight) / 2) + 'px';
     }
 };

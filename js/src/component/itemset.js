@@ -128,7 +128,7 @@ ItemSet.prototype.repaint = function () {
         data = this.data,
         items = this.items,
         dataOptions = {
-            fields: ['id', 'start', 'end', 'content']
+            fields: ['id', 'start', 'end', 'content', 'type']
         },
         itemOptions = this.itemOptions;
     // TODO: copy options from the itemset itself?
@@ -143,17 +143,36 @@ ItemSet.prototype.repaint = function () {
             case 'add':
             case 'update':
                 var itemData = data.get(id, dataOptions);
-                // TODO: validate whether the itemData contains start and content?
-                if (!item) {
-                    // create item
-                    // TODO: create a separate method _createItem
-                    item = new ItemBox(itemData, itemOptions);
-                }
-                else {
-                    item.data = itemData; // TODO: create a method item.setData ?
+                var type = itemData.type ||
+                    (itemData.start && itemData.end && 'range') ||
+                    'box';
+
+                if (item) {
+                    // update item
+                    if (!(item instanceof itemTypes[type])) {
+                        // item type has changed, delete the item
+                        item.visible = false;
+                        changed = item.repaint() || changed;
+                        changed = true;
+                        item = null;
+                    }
+                    else {
+                        item.data = itemData; // TODO: create a method item.setData ?
+                        changed = item.repaint() || changed;
+                    }
                 }
 
-                changed = item.repaint() || changed;
+                if (!item) {
+                    // create item
+                    var constructor = itemTypes[type];
+                    if (constructor) {
+                        item = new constructor(itemData, itemOptions);
+                        changed = item.repaint() || changed;
+                    }
+                    else {
+                        throw new TypeError('Unknown item type "' + type + '"');
+                    }
+                }
 
                 // update lists
                 items[id] = item;
