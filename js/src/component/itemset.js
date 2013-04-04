@@ -308,7 +308,8 @@ ItemSet.prototype._toQueue = function (ids, action) {
     });
 
     if (this.controller) {
-        this.requestReflow();
+        //this.requestReflow();
+        this.requestRepaint();
     }
 };
 

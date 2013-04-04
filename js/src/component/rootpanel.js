@@ -29,16 +29,14 @@ RootPanel.prototype = new Panel();
 
 // TODO: comment
 RootPanel.prototype.setOptions = function (options) {
-    if ('autoResize' in options) {
-        if (util.option.asBoolean(options.autoResize)) {
-            this._watch();
-        }
-        else {
-            this._unwatch();
-        }
-    }
-
     Component.prototype.setOptions.call(this, options);
+
+    if (this.options.autoResize) {
+        this._watch();
+    }
+    else {
+        this._unwatch();
+    }
 };
 
 /**
