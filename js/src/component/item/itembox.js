@@ -9,9 +9,18 @@
  */
 function ItemBox (data, options) {
     this.props = {
-        dotHeight: 0,
-        dotWidth: 0,
-        lineWidth: 0
+        dot: {
+            left: 0,
+            top: 0,
+            width: 0,
+            height: 0
+        },
+        line: {
+            top: 0,
+            left: 0,
+            width: 0,
+            height: 0
+        }
     };
 
     Item.call(this, data, options);
@@ -128,65 +137,69 @@ ItemBox.prototype.repaint = function () {
 };
 
 /**
- * Reflow the item: calculate its actual size from the DOM
+ * Reflow the item: calculate its actual size and position from the DOM
  * @return {boolean} resized    returns true if the axis is resized
  * @override
  */
 ItemBox.prototype.reflow = function () {
-    var dom = this.dom,
+    if (this.data.start == undefined) {
+        throw new Error('Property "start" missing in item ' + this.data.id);
+    }
+
+    var update = util.updateProperty,
+        dom = this.dom,
         props = this.props,
-        resized;
+        options = this.options,
+        start = options.parent._toScreen(this.data.start),
+        align = options && options.align,
+        orientation = options.orientation,
+        changed = 0,
+        top;
 
     if (dom) {
-        var box = dom.box;
+        changed += update(props.dot, 'height', dom.dot.offsetHeight);
+        changed += update(props.dot, 'width', dom.dot.offsetWidth);
+        changed += update(props.line, 'width', dom.line.offsetWidth);
+        changed += update(props.line, 'width', dom.line.offsetWidth);
+        changed += update(this, 'width', dom.box.offsetWidth);
+        changed += update(this, 'height', dom.box.offsetHeight);
 
-        var dotHeight = dom.dot.offsetHeight;
-        if (dotHeight != props.dotHeight) {
-            props.dotHeight = dotHeight;
-            resized = true;
+        if (align == 'right') {
+            changed += update(this, 'left', start - this.width);
+        }
+        else if (align == 'left') {
+            changed += update(this, 'left', start);
+        }
+        else {
+            // default or 'center'
+            changed += update(this, 'left', start - this.width / 2);
         }
 
-        var dotWidth = dom.dot.offsetWidth;
-        if (dotWidth != props.dotWidth) {
-            props.dotWidth = dotWidth;
-            resized = true;
+        changed += update(props.line, 'left', start - props.line.width / 2);
+        changed += update(props.dot, 'left', start - props.dot.width / 2);
+        if (orientation == 'top') {
+            top = options.margin;
+            changed += update(this, 'top', top);
+            changed += update(props.line, 'top', 0);
+            changed += update(props.line, 'height', top);
+            changed += update(props.dot, 'top', -props.dot.height / 2);
         }
+        else {
+            // default or 'bottom'
+            var parentHeight = options.parent.height;
+            top = parentHeight - this.height - options.margin;
 
-        var lineWidth = dom.line.offsetWidth;
-        if (lineWidth != props.lineWidth) {
-            props.lineWidth = lineWidth;
-            resized = true;
-        }
-
-        var top = box.offsetTop;
-        if (top != this.top) {
-            this.top = top;
-            resized = true;
-        }
-
-        var left = box.offsetLeft;
-        if (left != this.left) {
-            this.left = left;
-            resized = true;
-        }
-
-        var width = box.offsetWidth;
-        if (width != this.width) {
-            this.width = width;
-            resized = true;
-        }
-
-        var height = box.offsetHeight;
-        if (height != this.height) {
-            this.height = height;
-            resized = true;
+            changed += update(this, 'top', top);
+            changed += update(props.line, 'top', top + this.height);
+            changed += update(props.line, 'height', Math.max(options.margin, 0));
+            changed += update(props.dot, 'top', parentHeight - props.dot.height / 2);
         }
     }
     else {
-        resized = false;
+        changed += 1;
     }
 
-    return resized;
+    return (changed > 0);
 };
 
 /**
@@ -224,51 +237,21 @@ ItemBox.prototype._create = function () {
  */
 ItemBox.prototype.reposition = function () {
     var dom = this.dom,
-        props = this.props,
-        options = this.options;
-    if (dom) {
-        if (this.data.start == undefined) {
-            throw new Error('Property "start" missing in item ' + this.data.id);
-        }
+        props = this.props;
 
-        var start = this.data && options.parent._toScreen(this.data.start),
-            align = options && options.align,
-            orientation = options.orientation,
-            box = dom.box,
+    if (dom) {
+        var box = dom.box,
             line = dom.line,
             dot = dom.dot;
 
-        var parentHeight = options.parent.height;
-        var top;
+        box.style.left = this.left + 'px';
+        box.style.top = this.top + 'px';
 
-        if (align == 'right') {
-            box.style.left = (start - this.width) + 'px';
-        }
-        else if (align == 'left') {
-            box.style.left = (start) + 'px';
-        }
-        else { // default or 'center'
-            box.style.left = (start - this.width / 2) + 'px';
-        }
+        line.style.left = props.line.left + 'px';
+        line.style.top = props.line.top + 'px';
+        line.style.height = props.line.height + 'px';
 
-        line.style.left = (start - props.lineWidth / 2) + 'px';
-        dot.style.left = (start - props.dotWidth / 2) + 'px';
-        if (orientation == 'top') {
-            top = options.margin;
-
-            box.style.top = top + 'px';
-            line.style.top = '0';
-            line.style.height = top + 'px';
-            dot.style.top = (-props.dotHeight / 2) + 'px';
-        }
-        else {
-            // default or 'bottom'
-            top = parentHeight - this.height - options.margin;
-
-            box.style.top = top + 'px';
-            line.style.top = (top + this.height) + 'px';
-            line.style.height = Math.max(parentHeight - top - this.height, 0) + 'px';
-            dot.style.top = (parentHeight - props.dotHeight / 2) + 'px';
-        }
+        dot.style.left = props.dot.left + 'px';
+        dot.style.top = props.dot.top + 'px';
     }
 };

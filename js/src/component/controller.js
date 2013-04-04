@@ -35,6 +35,7 @@ Controller.prototype.add = function (component) {
  * Request a reflow. The controller will schedule a reflow
  */
 Controller.prototype.requestReflow = function () {
+    // TODO: remove the check for a parent controller
     if (this.controller) {
         this.controller.requestReflow();
     }
@@ -53,6 +54,7 @@ Controller.prototype.requestReflow = function () {
  * Request a repaint. The controller will schedule a repaint
  */
 Controller.prototype.requestRepaint = function () {
+    // TODO: remove the check for a parent controller
     if (this.controller) {
         this.controller.requestReflow();
     }

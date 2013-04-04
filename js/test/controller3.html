@@ -36,7 +36,6 @@
             box-sizing: border-box;
             padding: 10px;
             width: 100%;
-            height: 80%;
         }
 
         #visualization .itemset {
@@ -48,6 +47,10 @@
 <body>
 
     <div id="visualization"></div>
+    <div>
+        <button onclick="controller.repaint();">repaint</button>
+        <button onclick="controller.reflow();">reflow</button>
+    </div>
 
     <script>
         // controller
@@ -56,7 +59,7 @@
         // main panel
         var main = new RootPanel({
             container: document.getElementById('visualization'),
-            autoResize: true,
+            autoResize: false,
             height: function () {
                 return timeaxis.height + itemset.height + 20;
             }

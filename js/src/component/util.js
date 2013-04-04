@@ -339,6 +339,23 @@ util.forEach = function forEach (object, callback) {
 };
 
 /**
+ * Update a property in an object
+ * @param {Object} object
+ * @param {String} key
+ * @param {*} value
+ * @return {Boolean} changed
+ */
+util.updateProperty = function updateProp (object, key, value) {
+    if (object[key] !== value) {
+        object[key] = value;
+        return true;
+    }
+    else {
+        return false;
+    }
+};
+
+/**
  * Add and event listener. Works for all browsers
  * @param {Element}     element    An html element
  * @param {string}      action     The action, for example "click",

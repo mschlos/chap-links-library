@@ -9,7 +9,10 @@
  */
 function ItemRange (data, options) {
     this.props = {
-        contentWidth: 0
+        content: {
+            left: 0,
+            width: 0
+        }
     };
 
     Item.call(this, data, options);
@@ -112,48 +115,57 @@ ItemRange.prototype.repaint = function () {
  * @override
  */
 ItemRange.prototype.reflow = function () {
+    if (this.data.start == undefined) {
+        throw new Error('Property "start" missing in item ' + this.data.id);
+    }
+    if (this.data.end == undefined) {
+        throw new Error('Property "end" missing in item ' + this.data.id);
+    }
+
     var dom = this.dom,
         props = this.props,
-        resized;
+        options = this.options,
+        start = options.parent._toScreen(this.data.start),
+        end = options.parent._toScreen(this.data.end),
+        changed = 0;
 
     if (dom) {
-        var box = dom.box;
+        var update = util.updateProperty,
+            box = dom.box,
+            parentWidth = options.parent.width,
+            contentLeft;
 
-        var contentWidth = dom.content.offsetWidth;
-        if (contentWidth != props.contentWidth) {
-            props.contentWidth = contentWidth;
-            resized = true;
+        changed += update(props.content, 'width', dom.content.offsetWidth);
+
+        changed += update(this, 'height', box.offsetHeight);
+
+        // limit the width of the this, as browsers cannot draw very wide divs
+        if (start < -parentWidth) {
+            start = -parentWidth;
+        }
+        if (end > 2 * parentWidth) {
+            end = 2 * parentWidth;
         }
 
-        var top = box.offsetTop;
-        if (top != this.top) {
-            this.top = top;
-            resized = true;
+        // when range exceeds left of the window, position the contents at the left of the visible area
+        if (start < 0) {
+            contentLeft = Math.min(-start,
+                (end - start - props.content.width - 2 * options.padding));
         }
+        else {
+            contentLeft = 0;
+        }
+        changed += update(props.content, 'left', contentLeft);
 
-        var left = box.offsetLeft;
-        if (left != this.left) {
-            this.left = left;
-            resized = true;
-        }
-
-        var width = box.offsetWidth;
-        if (width != this.width) {
-            this.width = width;
-            resized = true;
-        }
-
-        var height = box.offsetHeight;
-        if (height != this.height) {
-            this.height = height;
-            resized = true;
-        }
+        changed += update(this, 'top', box.offsetTop);
+        changed += update(this, 'left', start);
+        changed += update(this, 'width', Math.max(end - start, 1)); // TODO: reckon with border width;
     }
     else {
-        resized = false;
+        changed += 1;
     }
 
-    return resized;
+    return (changed > 0);
 };
 
 /**
@@ -182,45 +194,13 @@ ItemRange.prototype._create = function () {
  */
 ItemRange.prototype.reposition = function () {
     var dom = this.dom,
-        options = this.options,
-        margin = 5; // TODO: do not hardcode margin
+        props = this.props;
+
     if (dom) {
-        if (this.data.start == undefined) {
-            throw new Error('Property "start" missing in item ' + this.data.id);
-        }
-        if (this.data.end == undefined) {
-            throw new Error('Property "end" missing in item ' + this.data.id);
-        }
+        dom.box.style.top = this.top + 'px';
+        dom.box.style.left = this.left + 'px';
+        dom.box.style.width = this.width + 'px';
 
-        var contentWidth = options.parent.width,
-            start = this.data && options.parent._toScreen(this.data.start),
-            end = this.data && options.parent._toScreen(this.data.end),
-            box = dom.box,
-            content = dom.content,
-            contentLeft;
-
-        // limit the width of the this, as browsers cannot draw very wide divs
-        if (start < -contentWidth) {
-            start = -contentWidth;
-        }
-        if (end > 2 * contentWidth) {
-            end = 2 * contentWidth;
-        }
-
-        // when range exceeds left of the window, position the contents at the left of the visible area
-        if (start < 0) {
-            contentLeft = Math.min(-start,
-                (end - start - this.props.contentWidth - 2 * margin)) + 'px';
-        }
-        else {
-            contentLeft = '0';
-        }
-
-        box.style.top = this.top + 'px';
-        box.style.left = start + 'px';
-        //box.style.width = Math.max(end - start - 2 * this.options.borderWidth, 1) + 'px'; // TODO: borderWidth
-        box.style.width = Math.max(end - start, 1) + 'px';
-
-        content.style.left = contentLeft;
+        dom.content.style.left = props.content.left + 'px';
     }
 };

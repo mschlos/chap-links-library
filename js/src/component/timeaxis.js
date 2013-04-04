@@ -56,10 +56,11 @@ TimeAxis.prototype.setOptions = function (options) {
 
             var me = this;
             this.range.on('rangechange', function () {
-                me.requestRepaint();
+                // TODO: fix the delay in reflow/repaint, does not feel snappy
+                me.requestReflow();
             });
             this.range.on('rangechanged', function () {
-                me.requestRepaint();
+                me.requestReflow();
             });
         }
         else {
@@ -123,9 +124,14 @@ TimeAxis.prototype._toScreen = function(time) {
  * @return {Boolean} changed
  */
 TimeAxis.prototype.repaint = function () {
-    var changed = false;
-    var options = this.options;
-    var range = this.range;
+    var changed = 0,
+        update = util.updateProperty,
+        asSize = util.option.asSize,
+        options = this.options,
+        props = this.props,
+        range = this.range,
+        dom = this.dom;
+
     if (!range) {
         throw new Error('Cannot repaint time axis: no range configured');
     }
@@ -134,7 +140,7 @@ TimeAxis.prototype.repaint = function () {
     if (!frame) {
         frame = document.createElement('div');
         this.frame = frame;
-        changed = true;
+        changed += 1;
     }
     frame.className = 'axis ' + options.orientation;
     // TODO: custom className?
@@ -149,7 +155,7 @@ TimeAxis.prototype.repaint = function () {
         }
         parentContainer.appendChild(frame);
 
-        changed = true;
+        changed += 1;
     }
 
     var parent = frame.parentNode;
@@ -157,42 +163,19 @@ TimeAxis.prototype.repaint = function () {
         var beforeChild = frame.nextSibling;
         parent.removeChild(frame); //  take frame offline while updating (is almost twice as fast)
 
-        // update top
         var orientation = options.orientation;
         var defaultTop = (orientation == 'bottom') ? (this.props.parentHeight - this.height) + 'px' : '0';
-        var top = util.option.asSize(options.top, defaultTop);
-        if (frame.style.top != top) {
-            frame.style.top = top;
-            changed = true;
-        }
-
-        // update left
-        var left = util.option.asSize(options.left, '0');
-        if (frame.style.left != left) {
-            frame.style.left = left;
-            changed = true;
-        }
-
-        // update width
-        var width = util.option.asSize(options.width, '100%');
-        if (frame.style.width != width) {
-            frame.style.width = width;
-            changed = true;
-        }
-
-        // update height
-        frame.style.height = this.height + 'px';
+        changed += update(frame.style, 'top', asSize(options.top, defaultTop));
+        changed += update(frame.style, 'left', asSize(options.left, '0'));
+        changed += update(frame.style, 'width', asSize(options.width, '100%'));
+        changed += update(frame.style, 'height', asSize(options.height, this.height));
 
         // get character width
         this._repaintMeasureChars();
-        var charWidth = this.props.minorCharWidth || 10;
-        if (!('minorCharWidth' in this.props)) {
-            changed = true;
-        }
 
         // calculate best step
         this._updateConversion();
-        var minimumStep = this._toTime(charWidth * 5) - this._toTime(0);
+        var minimumStep = this._toTime((props.minorCharWidth || 10) * 5) - this._toTime(0);
         var step = new TimeStep(
             util.cast(range.start, 'Date'),
             util.cast(range.end, 'Date'),
@@ -235,7 +218,7 @@ TimeAxis.prototype.repaint = function () {
         if (options.showMajorLabels) {
             var leftTime = this._toTime(0),
                 leftText = step.getLabelMajor(leftTime),
-                widthText = leftText.length * charWidth + 10; // upper bound estimation
+                widthText = leftText.length * (props.majorCharWidth || 10) + 10; // upper bound estimation
 
             if (xFirstMajorLabel == undefined || widthText < xFirstMajorLabel) {
                 this._repaintMajorText(0, leftText);
@@ -255,7 +238,7 @@ TimeAxis.prototype.repaint = function () {
         }
     }
 
-    return changed;
+    return (changed > 0);
 };
 
 var avg = 10;
@@ -437,34 +420,27 @@ TimeAxis.prototype._repaintMeasureChars = function () {
     // calculate the width and height of a single character
     // this is used to calculate the step size, and also the positioning of the
     // axis
-    var needReflow = false,
-        dom = this.dom,
+    var dom = this.dom,
         text;
 
     if (!dom.characterMinor) {
-        text = document.createTextNode("0");
-        var measureCharMinor = document.createElement("DIV");
-        measureCharMinor.className = "text minor measure";
+        text = document.createTextNode('0');
+        var measureCharMinor = document.createElement('DIV');
+        measureCharMinor.className = 'text minor measure';
         measureCharMinor.appendChild(text);
         this.frame.appendChild(measureCharMinor);
 
         dom.measureCharMinor = measureCharMinor;
-        needReflow = true;
     }
 
     if (!dom.characterMajor) {
-        text = document.createTextNode("0");
-        var measureCharMajor = document.createElement("DIV");
-        measureCharMajor.className = "text major measure";
+        text = document.createTextNode('0');
+        var measureCharMajor = document.createElement('DIV');
+        measureCharMajor.className = 'text major measure';
         measureCharMajor.appendChild(text);
         this.frame.appendChild(measureCharMajor);
 
         dom.measureCharMajor = measureCharMajor;
-        needReflow = true;
-    }
-
-    if (needReflow) {
-        this.requestReflow();
     }
 };
 
@@ -473,26 +449,13 @@ TimeAxis.prototype._repaintMeasureChars = function () {
  * @return {Boolean} resized
  */
 TimeAxis.prototype.reflow = function () {
-    var resized = false;
-    var frame = this.frame;
+    var changed = 0,
+        update = util.updateProperty,
+        frame = this.frame;
+
     if (frame) {
-        var top = frame.offsetTop;
-        if (top != this.top) {
-            this.top = top;
-            resized = true;
-        }
-
-        var left = frame.offsetLeft;
-        if (left != this.left) {
-            this.left = left;
-            resized = true;
-        }
-
-        var width = frame.offsetWidth;
-        if (width != this.width) {
-            this.width = width;
-            resized = true;
-        }
+        changed += update(this, 'top', frame.offsetTop);
+        changed += update(this, 'left', frame.offsetLeft);
 
         // calculate size of a character
         var props = this.props,
@@ -512,7 +475,7 @@ TimeAxis.prototype.reflow = function () {
         var parentHeight = frame.parentNode ? frame.parentNode.offsetHeight : 0;
         if (parentHeight != props.parentHeight) {
             props.parentHeight = parentHeight;
-            resized = true;
+            changed += 1;
         }
         switch (this.options.orientation) {
             case 'bottom':
@@ -559,13 +522,11 @@ TimeAxis.prototype.reflow = function () {
         }
 
         var height = props.minorLabelHeight + props.majorLabelHeight;
-        if (height != this.height) {
-            this.height = height;
-            resized = true;
-        }
+        changed += update(this, 'width', frame.offsetWidth);
+        changed += update(this, 'height', height);
 
         this._updateConversion();
     }
 
-    return resized;
+    return (changed > 0);
 };

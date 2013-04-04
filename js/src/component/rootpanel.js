@@ -46,7 +46,9 @@ RootPanel.prototype.setOptions = function (options) {
  * @return {Boolean} changed
  */
 RootPanel.prototype.repaint = function () {
-    var changed = false,
+    var changed = 0,
+        update = util.updateProperty,
+        asSize = util.option.asSize,
         options = this.options,
         frame = this.frame;
     if (!frame) {
@@ -58,47 +60,24 @@ RootPanel.prototype.repaint = function () {
         }
 
         this.frame = frame;
-        changed = true;
+        changed += 1;
     }
     if (!frame.parentNode) {
         if (!this.options.container) {
             throw new Error('Cannot repaint root panel: no container attached');
         }
         this.options.container.appendChild(frame);
-        changed = true;
+        changed += 1;
     }
 
-    // update top
-    var top = util.option.asSize(options.top, '0');
-    if (frame.style.top != top) {
-        frame.style.top = top;
-        changed = true;
-    }
-
-    // update left
-    var left = util.option.asSize(options.left, '0');
-    if (frame.style.left != left) {
-        frame.style.left = left;
-        changed = true;
-    }
-
-    // update width
-    var width = util.option.asSize(options.width, '100%');
-    if (frame.style.width != width) {
-        frame.style.width = width;
-        changed = true;
-    }
-
-    // update height
-    var height = util.option.asSize(options.height, '100%');
-    if (frame.style.height != height) {
-        frame.style.height = height;
-        changed = true;
-    }
+    changed += update(frame.style, 'top',    asSize(options.top, '0'));
+    changed += update(frame.style, 'left',   asSize(options.left, '0'));
+    changed += update(frame.style, 'width',  asSize(options.width, '100%'));
+    changed += update(frame.style, 'height', asSize(options.height, '100%'));
 
     this._updateEventEmitters();
 
-    return changed;
+    return (changed > 0);
 };
 
 /**
@@ -106,38 +85,21 @@ RootPanel.prototype.repaint = function () {
  * @return {Boolean} resized
  */
 RootPanel.prototype.reflow = function () {
-    var resized = false;
-    var frame = this.frame;
+    var changed = 0,
+        update = util.updateProperty,
+        frame = this.frame;
+
     if (frame) {
-        var top = frame.offsetTop;
-        if (top != this.top) {
-            this.top = top;
-            resized = true;
-        }
-
-        var left = frame.offsetLeft;
-        if (left != this.left) {
-            this.left = left;
-            resized = true;
-        }
-
-        var width = frame.offsetWidth;
-        if (width != this.width) {
-            this.width = width;
-            resized = true;
-        }
-
-        var height = frame.offsetHeight;
-        if (height != this.height) {
-            this.height = height;
-            resized = true;
-        }
+        changed += update(this, 'top', frame.offsetTop);
+        changed += update(this, 'left', frame.offsetLeft);
+        changed += update(this, 'width', frame.offsetWidth);
+        changed += update(this, 'height', frame.offsetHeight);
     }
     else {
-        resized = true;
+        changed += 1;
     }
 
-    return resized;
+    return (changed > 0);
 };
 
 /**

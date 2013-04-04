@@ -8,7 +8,17 @@
  *                            // TODO: describe available options
  */
 function ItemPoint (data, options) {
-    this.props = {};
+    this.props = {
+        dot: {
+            top: 0,
+            width: 0,
+            height: 0
+        },
+        content: {
+            height: 0,
+            marginLeft: 0
+        }
+    };
 
     Item.call(this, data, options);
 }
@@ -111,60 +121,46 @@ ItemPoint.prototype.repaint = function () {
  * @override
  */
 ItemPoint.prototype.reflow = function () {
-    var dom = this.dom,
+    if (this.data.start == undefined) {
+        throw new Error('Property "start" missing in item ' + this.data.id);
+    }
+
+    var update = util.updateProperty,
+        dom = this.dom,
         props = this.props,
-        resized;
+        options = this.options,
+        orientation = options.orientation,
+        start = options.parent._toScreen(this.data.start),
+        changed = 0,
+        top;
 
     if (dom) {
-        var point = dom.point;
+        changed += update(this, 'width', dom.point.offsetWidth);
+        changed += update(this, 'height', dom.point.offsetHeight);
+        changed += update(props.dot, 'width', dom.dot.offsetWidth);
+        changed += update(props.dot, 'height', dom.dot.offsetHeight);
+        changed += update(props.content, 'height', dom.content.offsetHeight);
 
-        var dotHeight = dom.dot.offsetHeight;
-        if (dotHeight != props.dotHeight) {
-            props.dotHeight = dotHeight;
-            resized = true;
+        if (orientation == 'top') {
+            top = options.margin;
         }
+        else {
+            // default or 'bottom'
+            var parentHeight = options.parent.height;
+            top = parentHeight - this.height - options.margin;
+        }
+        changed += update(this, 'top', top);
+        changed += update(this, 'left', start - props.dot.width / 2);
+        changed += update(props.content, 'marginLeft', 1.5 * props.dot.width);
+        //changed += update(props.content, 'marginRight', 0.5 * props.dot.width); // TODO
 
-        var dotWidth = dom.dot.offsetWidth;
-        if (dotWidth != props.dotWidth) {
-            props.dotWidth = dotWidth;
-            resized = true;
-        }
-
-        var contentHeight = dom.content.offsetHeight;
-        if (contentHeight != props.contentHeight) {
-            props.contentHeight = contentHeight;
-            resized = true;
-        }
-
-        var top = point.offsetTop;
-        if (top != this.top) {
-            this.top = top;
-            resized = true;
-        }
-
-        var left = point.offsetLeft;
-        if (left != this.left) {
-            this.left = left;
-            resized = true;
-        }
-
-        var width = point.offsetWidth;
-        if (width != this.width) {
-            this.width = width;
-            resized = true;
-        }
-
-        var height = point.offsetHeight;
-        if (height != this.height) {
-            this.height = height;
-            resized = true;
-        }
+        changed += update(props.dot, 'top', (this.height - props.dot.height) / 2);
     }
     else {
-        resized = false;
+        changed += 1;
     }
 
-    return resized;
+    return (changed > 0);
 };
 
 /**
@@ -200,19 +196,14 @@ ItemPoint.prototype._create = function () {
 ItemPoint.prototype.reposition = function () {
     var dom = this.dom,
         props = this.props;
+
     if (dom) {
-        if (this.data.start == undefined) {
-            throw new Error('Property "start" missing in item ' + this.data.id);
-        }
-
-        var options = this.options,
-            start = this.data && options.parent._toScreen(this.data.start);
-
         dom.point.style.top = this.top + 'px';
-        dom.point.style.left = (start - props.dotWidth / 2) + 'px';
+        dom.point.style.left = this.left + 'px';
 
-        dom.content.style.marginLeft = (1.5 * props.dotWidth) + 'px';
-        //dom.content.style.marginRight = (0.5 * this.dotWidth) + 'px'; // TODO
-        dom.dot.style.top = ((this.height - props.dotHeight) / 2) + 'px';
+        dom.content.style.marginLeft = props.content.marginLeft + 'px';
+        //dom.content.style.marginRight = props.content.marginRight + 'px'; // TODO
+
+        dom.dot.style.top = props.dot.top + 'px';
     }
 };

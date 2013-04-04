@@ -21,7 +21,8 @@ function ItemSet(options) {
         style: 'box',
         align: 'center',
         orientation: 'bottom',
-        margin: 20
+        margin: 20,
+        padding: 5
     };
 
     var me = this;
@@ -55,6 +56,8 @@ ItemSet.prototype.setOptions = function (options) {
 
     Component.prototype.setOptions.call(this, options);
 
+    // TODO: ItemSet should also attach event listeners for rangechange and rangechanged, like timeaxis
+
     // update the item options
     var itemOptions = this.itemOptions;
     util.forEach(this.options, function (value, name) {
@@ -67,7 +70,9 @@ ItemSet.prototype.setOptions = function (options) {
  * @return {Boolean} changed
  */
 ItemSet.prototype.repaint = function () {
-    var changed = false,
+    var changed = 0,
+        update = util.updateProperty,
+        asSize = util.option.asSize,
         options = this.options,
         frame = this.frame;
 
@@ -80,7 +85,7 @@ ItemSet.prototype.repaint = function () {
         }
 
         this.frame = frame;
-        changed = true;
+        changed += 1;
     }
     if (!frame.parentNode) {
         if (!this.parent) {
@@ -91,36 +96,13 @@ ItemSet.prototype.repaint = function () {
             throw new Error('Cannot repaint itemset: parent has no container element');
         }
         parentContainer.appendChild(frame);
-        changed = true;
+        changed += 1;
     }
 
-    // update height
-    var height = this.height + 'px';
-    if (frame.style.height != height) {
-        frame.style.height = height;
-        changed = true;
-    }
-
-    // update top
-    var top = util.option.asSize(options.top, '0');
-    if (frame.style.top != top) {
-        frame.style.top = top;
-        changed = true;
-    }
-
-    // update left
-    var left = util.option.asSize(options.left, '0');
-    if (frame.style.left != left) {
-        frame.style.left = left;
-        changed = true;
-    }
-
-    // update width
-    var width = util.option.asSize(options.width, '100%');
-    if (frame.style.width != width) {
-        frame.style.width = width;
-        changed = true;
-    }
+    changed += update(frame.style, 'height', asSize(options.height, this.height + 'px'));
+    changed += update(frame.style, 'top',    asSize(options.top, '0'));
+    changed += update(frame.style, 'left',   asSize(options.left, '0'));
+    changed += update(frame.style, 'width',  asSize(options.width, '100%'));
 
     this._updateConversion();
 
@@ -146,28 +128,28 @@ ItemSet.prototype.repaint = function () {
                 var type = itemData.type ||
                     (itemData.start && itemData.end && 'range') ||
                     'box';
+                var constructor = itemTypes[type];
 
+                // TODO: how to handle items with invalid data? hide them and give a warning? or throw an error?
                 if (item) {
                     // update item
-                    if (!(item instanceof itemTypes[type])) {
+                    if (!constructor || !(item instanceof constructor)) {
                         // item type has changed, delete the item
                         item.visible = false;
-                        changed = item.repaint() || changed;
-                        changed = true;
+                        changed += item.repaint();
                         item = null;
                     }
                     else {
                         item.data = itemData; // TODO: create a method item.setData ?
-                        changed = item.repaint() || changed;
+                        changed += item.repaint();
                     }
                 }
 
                 if (!item) {
                     // create item
-                    var constructor = itemTypes[type];
                     if (constructor) {
                         item = new constructor(itemData, itemOptions);
-                        changed = item.repaint() || changed;
+                        changed += item.repaint();
                     }
                     else {
                         throw new TypeError('Unknown item type "' + type + '"');
@@ -183,7 +165,7 @@ ItemSet.prototype.repaint = function () {
                 if (item) {
                     // TODO: remove dom of the item
                     item.visible = false;
-                    changed = item.repaint() || changed;
+                    changed += item.repaint();
                 }
 
                 // update lists
@@ -201,7 +183,7 @@ ItemSet.prototype.repaint = function () {
         item.reposition();
     });
 
-    return changed;
+    return (changed > 0);
 };
 
 /**
@@ -209,51 +191,36 @@ ItemSet.prototype.repaint = function () {
  * @return {Boolean} resized
  */
 ItemSet.prototype.reflow = function () {
-    var resized = false;
-    var frame = this.frame;
+    var changed = 0,
+        update = util.updateProperty,
+        frame = this.frame;
+
     if (frame) {
-        var top = frame.offsetTop;
-        if (top != this.top) {
-            this.top = top;
-            resized = true;
-        }
-
-        var left = frame.offsetLeft;
-        if (left != this.left) {
-            this.left = left;
-            resized = true;
-        }
-
-        var width = frame.offsetWidth;
-        if (width != this.width) {
-            this.width = width;
-            resized = true;
-        }
-
         // calculate height from items
+        // TODO: only calculate the height when height is not defined as an option
         var maxHeight = 0;
         util.forEach(this.items, function (item) {
             maxHeight = Math.max(maxHeight, item.height);
         });
         var height = maxHeight + this.itemOptions.margin;
-        if (height != this.height) {
-            this.height = height;
-            resized = true;
-        }
+
+        changed += update(this, 'top', frame.offsetTop);
+        changed += update(this, 'left', frame.offsetLeft);
+        changed += update(this, 'width', frame.offsetWidth);
+        changed += update(this, 'height', height);
     }
     else {
-        resized = true;
+        changed += 1;
     }
 
     this._updateConversion();
 
     util.forEach(this.items, function (item) {
-        item.reflow();
+        changed += item.reflow();
     });
 
-    return resized;
+    return (changed > 0);
 };
-
 
 /**
  * Subscribe the ItemSet to events of the current dataset
@@ -341,7 +308,7 @@ ItemSet.prototype._toQueue = function (ids, action) {
     });
 
     if (this.controller) {
-        this.requestRepaint();
+        this.requestReflow();
     }
 };
 
