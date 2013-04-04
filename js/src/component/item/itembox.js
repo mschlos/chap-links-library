@@ -85,8 +85,11 @@ ItemBox.prototype.repaint = function () {
                     dom.content.innerHTML = '';
                     dom.content.appendChild(this.content);
                 }
-                else {
+                else if (this.data.content != undefined) {
                     dom.content.innerHTML = this.content;
+                }
+                else {
+                    throw new Error('Property "content" missing in item ' + this.data.id);
                 }
                 changed = true;
             }
@@ -94,10 +97,13 @@ ItemBox.prototype.repaint = function () {
             // update class
             var className = (this.data.className? ' ' + this.data.className : '') +
                 (this.selected ? ' selected' : '');
-            dom.box.className = 'item box' + className;
-            dom.line.className = 'item line' + className;
-            dom.dot.className  = 'item dot' + className;
-            // TODO: check whether the classname is changed, if so set changed to true
+            if (this.className != className) {
+                this.className = className;
+                dom.box.className = 'item box' + className;
+                dom.line.className = 'item line' + className;
+                dom.dot.className  = 'item dot' + className;
+                changed = true;
+            }
         }
     }
     else {
@@ -204,8 +210,6 @@ ItemBox.prototype._create = function () {
         // line to axis
         dom.line = document.createElement('DIV');
         dom.line.className = 'line';
-        // TODO: draw the lines in a separate div 'background',
-        // so the lines will be drawn behind all boxes and ranges
 
         // dot on axis
         dom.dot = document.createElement('DIV');
@@ -220,18 +224,19 @@ ItemBox.prototype._create = function () {
  */
 ItemBox.prototype.reposition = function () {
     var dom = this.dom,
-        props = this.props;
+        props = this.props,
+        options = this.options;
     if (dom) {
-        var options = this.options,
-            start = this.data && options.parent._toScreen(this.data.start),
+        if (this.data.start == undefined) {
+            throw new Error('Property "start" missing in item ' + this.data.id);
+        }
+
+        var start = this.data && options.parent._toScreen(this.data.start),
             align = options && options.align,
             orientation = options.orientation,
             box = dom.box,
             line = dom.line,
             dot = dom.dot;
-
-        // TODO: check whether start is defined
-        // TODO: check whether align is defined
 
         var parentHeight = options.parent.height;
         var top;
@@ -257,6 +262,7 @@ ItemBox.prototype.reposition = function () {
             dot.style.top = (-props.dotHeight / 2) + 'px';
         }
         else {
+            // default or 'bottom'
             top = parentHeight - this.height - options.margin;
 
             box.style.top = top + 'px';

@@ -73,8 +73,11 @@ ItemPoint.prototype.repaint = function () {
                     dom.content.innerHTML = '';
                     dom.content.appendChild(this.content);
                 }
-                else {
+                else if (this.data.content != undefined) {
                     dom.content.innerHTML = this.content;
+                }
+                else {
+                    throw new Error('Property "content" missing in item ' + this.data.id);
                 }
                 changed = true;
             }
@@ -82,8 +85,11 @@ ItemPoint.prototype.repaint = function () {
             // update class
             var className = (this.data.className? ' ' + this.data.className : '') +
                 (this.selected ? ' selected' : '');
-            dom.point.className  = 'item point' + className;
-            // TODO: check whether the classname is changed, if so set changed to true
+            if (this.className != className) {
+                this.className = className;
+                dom.point.className  = 'item point' + className;
+                changed = true;
+            }
         }
     }
     else {
@@ -195,11 +201,12 @@ ItemPoint.prototype.reposition = function () {
     var dom = this.dom,
         props = this.props;
     if (dom) {
+        if (this.data.start == undefined) {
+            throw new Error('Property "start" missing in item ' + this.data.id);
+        }
+
         var options = this.options,
             start = this.data && options.parent._toScreen(this.data.start);
-
-        // TODO: check whether start is defined
-        // TODO: check whether align is defined
 
         dom.point.style.top = this.top + 'px';
         dom.point.style.left = (start - props.dotWidth / 2) + 'px';

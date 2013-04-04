@@ -75,15 +75,22 @@ ItemRange.prototype.repaint = function () {
                     dom.content.innerHTML = '';
                     dom.content.appendChild(this.content);
                 }
-                else {
+                else if (this.data.content != undefined) {
                     dom.content.innerHTML = this.content;
+                }
+                else {
+                    throw new Error('Property "content" missing in item ' + this.data.id);
                 }
                 changed = true;
             }
 
             // update class
             var className = this.data.className ? ('' + this.data.className) : '';
-            dom.box.className = 'item range' + className;
+            if (this.className != className) {
+                this.className = className;
+                dom.box.className = 'item range' + className;
+                changed = true;
+            }
         }
     }
     else {
@@ -178,8 +185,13 @@ ItemRange.prototype.reposition = function () {
         options = this.options,
         margin = 5; // TODO: do not hardcode margin
     if (dom) {
-        // TODO: check whether start is defined
-        // TODO: check whether end is defined
+        if (this.data.start == undefined) {
+            throw new Error('Property "start" missing in item ' + this.data.id);
+        }
+        if (this.data.end == undefined) {
+            throw new Error('Property "end" missing in item ' + this.data.id);
+        }
+
         var contentWidth = options.parent.width,
             start = this.data && options.parent._toScreen(this.data.start),
             end = this.data && options.parent._toScreen(this.data.end),

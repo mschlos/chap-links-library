@@ -319,7 +319,7 @@ util.removeClassName = function removeClassname(elem, className) {
  * In case of an array, the built-in Array.forEach() is applied.
  * In case of an Object, the method loops over all properties of the object.
  * @param {Object | Array} object   An Object or Array
- * @param {function }callback       Callback method, called for each item in
+ * @param {function} callback       Callback method, called for each item in
  *                                  the object or array with three parameters:
  *                                  callback(value, index, object)
  */
