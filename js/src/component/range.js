@@ -108,6 +108,23 @@ Range.prototype._trigger = function (event) {
  * @param {Number} end
  */
 Range.prototype.setRange = function(start, end) {
+    var changed = this._applyRange(start, end);
+    if (changed) {
+        this._trigger('rangechange');
+        this._trigger('rangechanged');
+    }
+};
+
+/**
+ * Set a new start and end range. This method is the same as setRange, but
+ * does not trigger a range change and range changed event, and it returns
+ * true when the range is changed
+ * @param {Number} start
+ * @param {Number} end
+ * @return {Boolean} changed
+ * @private
+ */
+Range.prototype._applyRange = function(start, end) {
     var newStart = util.cast(start, 'Number');
     var newEnd = util.cast(end, 'Number');
 
@@ -126,10 +143,12 @@ Range.prototype.setRange = function(start, end) {
 
     // TODO: validate min and max options
 
+    var changed = (this.start != newStart || this.end != newEnd);
+
     this.start = newStart;
     this.end = newEnd;
-    this._trigger('rangechange');
-    this._trigger('rangechanged');
+
+    return changed;
 };
 
 /**
@@ -266,7 +285,7 @@ Range.prototype._onMouseMove = function (event, listener) {
     var width = (listener.direction == 'horizontal') ?
         listener.component.width : listener.component.height;
     var diffRange = -diff / width * interval;
-    this.setRange(params.start + diffRange, params.end + diffRange);
+    this._applyRange(params.start + diffRange, params.end + diffRange);
 
     // fire a rangechange event
     this._trigger('rangechange');
@@ -356,10 +375,6 @@ Range.prototype._onMouseWheel = function(event, listener) {
             }
 
             me.zoom(zoomFactor, zoomAround);
-
-            // fire a rangechange and a rangechanged event
-            me._trigger('rangechange');
-            me._trigger('rangechanged');
         };
 
         zoom();

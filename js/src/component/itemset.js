@@ -100,8 +100,8 @@ ItemSet.prototype.repaint = function () {
     }
 
     changed += update(frame.style, 'height', asSize(options.height, this.height + 'px'));
-    changed += update(frame.style, 'top',    asSize(options.top, '0'));
-    changed += update(frame.style, 'left',   asSize(options.left, '0'));
+    changed += update(frame.style, 'top',    asSize(options.top, '0px'));
+    changed += update(frame.style, 'left',   asSize(options.left, '0px'));
     changed += update(frame.style, 'width',  asSize(options.width, '100%'));
 
     this._updateConversion();

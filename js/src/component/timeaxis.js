@@ -142,11 +142,11 @@ TimeAxis.prototype.repaint = function () {
         parent.removeChild(frame); //  take frame offline while updating (is almost twice as fast)
 
         var orientation = options.orientation;
-        var defaultTop = (orientation == 'bottom') ? (this.props.parentHeight - this.height) + 'px' : '0';
+        var defaultTop = (orientation == 'bottom') ? (this.props.parentHeight - this.height) + 'px' : '0px';
         changed += update(frame.style, 'top', asSize(options.top, defaultTop));
-        changed += update(frame.style, 'left', asSize(options.left, '0'));
+        changed += update(frame.style, 'left', asSize(options.left, '0px'));
         changed += update(frame.style, 'width', asSize(options.width, '100%'));
-        changed += update(frame.style, 'height', asSize(options.height, this.height));
+        changed += update(frame.style, 'height', asSize(options.height, this.height + 'px'));
 
         // get characters width and height
         this._repaintMeasureChars();
@@ -212,8 +212,6 @@ TimeAxis.prototype.repaint = function () {
 
     return (changed > 0);
 };
-
-var avg = 10;
 
 /**
  * Start a repaint. Move all DOM elements to a redundant list, where they
