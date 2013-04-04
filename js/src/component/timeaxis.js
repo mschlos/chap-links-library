@@ -24,7 +24,13 @@ function TimeAxis (options) {
             minorTexts: []
         }
     };
-    this.props = {};
+    this.props = {
+        range: {
+            start: 0,
+            end: 0,
+            minimumStep: 0
+        }
+    };
     this.options = {};
     this.conversion = null;
     this.range = null;
@@ -73,29 +79,8 @@ TimeAxis.prototype.setOptions = function (options) {
     }
 };
 
-
-/**
- * Calculate the factor and offset to convert a position on screen to the
- * corresponding date and vice versa.
- * After the method _updateConversion is executed once, the methods _toTime
- * and _toScreen can be used.
- * @private
- */
-TimeAxis.prototype._updateConversion = function() {
-    if (this.range) {
-        if (this.range.conversion) {
-            this.conversion = this.range.conversion(this.width);
-        }
-        else {
-            this.conversion = Range.conversion(this.range.start, this.range.end, this.width);
-        }
-    }
-};
-
 /**
  * Convert a position on screen (pixels) to a datetime
- * Before this method can be used, the method _updateConversion must be
- * executed once.
  * @param {int}     x    Position on the screen in pixels
  * @return {Date}   time The datetime the corresponds with given position x
  * @private
@@ -107,8 +92,6 @@ TimeAxis.prototype._toTime = function(x) {
 
 /**
  * Convert a datetime (Date object) into a position on the screen
- * Before this method can be used, the method _updateConversion must be
- * executed once.
  * @param {Date}   time A date
  * @return {int}   x    The position on the screen in pixels which corresponds
  *                      with the given date.
@@ -129,12 +112,7 @@ TimeAxis.prototype.repaint = function () {
         asSize = util.option.asSize,
         options = this.options,
         props = this.props,
-        range = this.range,
-        dom = this.dom;
-
-    if (!range) {
-        throw new Error('Cannot repaint time axis: no range configured');
-    }
+        step = this.step;
 
     var frame = this.frame;
     if (!frame) {
@@ -170,62 +148,56 @@ TimeAxis.prototype.repaint = function () {
         changed += update(frame.style, 'width', asSize(options.width, '100%'));
         changed += update(frame.style, 'height', asSize(options.height, this.height));
 
-        // get character width
+        // get characters width and height
         this._repaintMeasureChars();
 
-        // calculate best step
-        this._updateConversion();
-        var minimumStep = this._toTime((props.minorCharWidth || 10) * 5) - this._toTime(0);
-        var step = new TimeStep(
-            util.cast(range.start, 'Date'),
-            util.cast(range.end, 'Date'),
-            minimumStep);
+        if (this.step) {
+            this._repaintStart();
 
-        this._repaintStart();
+            step.first();
+            var xFirstMajorLabel = undefined;
+            var max = 0;
+            while (step.hasNext() && max < 1000) {
+                max++;
+                var cur = step.getCurrent(),
+                    x = this._toScreen(cur),
+                    isMajor = step.isMajor();
 
-        step.first();
-        var xFirstMajorLabel = undefined;
-        var max = 0;
-        while (step.hasNext() && max < 1000) {
-            max++;
-            var cur = step.getCurrent(),
-                x = this._toScreen(cur),
-                isMajor = step.isMajor();
+                // TODO: lines must have a width, such that we can create css backgrounds
 
-            // TODO: lines must have a width, such that we can create css backgrounds
-
-            if (options.showMinorLabels) {
-                this._repaintMinorText(x, step.getLabelMinor());
-            }
-
-            if (isMajor && options.showMajorLabels) {
-                if (x > 0) {
-                    if (xFirstMajorLabel == undefined) {
-                        xFirstMajorLabel = x;
-                    }
-                    this._repaintMajorText(x, step.getLabelMajor());
+                if (options.showMinorLabels) {
+                    this._repaintMinorText(x, step.getLabelMinor());
                 }
-                this._repaintMajorLine(x);
-            }
-            else {
-                this._repaintMinorLine(x);
+
+                if (isMajor && options.showMajorLabels) {
+                    if (x > 0) {
+                        if (xFirstMajorLabel == undefined) {
+                            xFirstMajorLabel = x;
+                        }
+                        this._repaintMajorText(x, step.getLabelMajor());
+                    }
+                    this._repaintMajorLine(x);
+                }
+                else {
+                    this._repaintMinorLine(x);
+                }
+
+                step.next();
             }
 
-            step.next();
+            // create a major label on the left when needed
+            if (options.showMajorLabels) {
+                var leftTime = this._toTime(0),
+                    leftText = step.getLabelMajor(leftTime),
+                    widthText = leftText.length * (props.majorCharWidth || 10) + 10; // upper bound estimation
+
+                if (xFirstMajorLabel == undefined || widthText < xFirstMajorLabel) {
+                    this._repaintMajorText(0, leftText);
+                }
+            }
+
+            this._repaintEnd();
         }
-
-        // create a major label on the left when needed
-        if (options.showMajorLabels) {
-            var leftTime = this._toTime(0),
-                leftText = step.getLabelMajor(leftTime),
-                widthText = leftText.length * (props.majorCharWidth || 10) + 10; // upper bound estimation
-
-            if (xFirstMajorLabel == undefined || widthText < xFirstMajorLabel) {
-                this._repaintMajorText(0, leftText);
-            }
-        }
-
-        this._repaintEnd();
 
         this._repaintLine();
 
@@ -451,7 +423,12 @@ TimeAxis.prototype._repaintMeasureChars = function () {
 TimeAxis.prototype.reflow = function () {
     var changed = 0,
         update = util.updateProperty,
-        frame = this.frame;
+        frame = this.frame,
+        range = this.range;
+
+    if (!range) {
+        throw new Error('Cannot repaint time axis: no range configured');
+    }
 
     if (frame) {
         changed += update(this, 'top', frame.offsetTop);
@@ -504,7 +481,6 @@ TimeAxis.prototype.reflow = function () {
                 props.majorLabelTop = 0;
                 props.minorLabelTop = props.majorLabelTop + props.majorLabelHeight;
 
-                // TODO: lineheight is not yet calculated correctly
                 props.minorLineTop = props.minorLabelTop;
                 props.minorLineHeight = parentHeight - props.majorLabelHeight - this.top;
                 props.minorLineWidth = 1; // TODO: really calculate width
@@ -525,7 +501,20 @@ TimeAxis.prototype.reflow = function () {
         changed += update(this, 'width', frame.offsetWidth);
         changed += update(this, 'height', height);
 
-        this._updateConversion();
+        // calculate range and step
+        if (range.conversion) {
+            this.conversion = range.conversion(this.width);
+        }
+        else {
+            this.conversion = Range.conversion(range.start, range.end, this.width);
+        }
+        var start = util.cast(range.start, 'Date'),
+            end = util.cast(range.end, 'Date'),
+            minimumStep = this._toTime((props.minorCharWidth || 10) * 5) - this._toTime(0);
+        this.step = new TimeStep(start, end, minimumStep);
+        changed += update(props.range, 'start', start.valueOf());
+        changed += update(props.range, 'end', end.valueOf());
+        changed += update(props.range, 'minimumStep', minimumStep.valueOf());
     }
 
     return (changed > 0);

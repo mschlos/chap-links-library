@@ -5,7 +5,6 @@
  */
 function Controller () {
     this.id = util.randomUUID();
-    this.controller = null;
     this.components = {};
 
     this.repaintTimer = undefined;
@@ -35,18 +34,12 @@ Controller.prototype.add = function (component) {
  * Request a reflow. The controller will schedule a reflow
  */
 Controller.prototype.requestReflow = function () {
-    // TODO: remove the check for a parent controller
-    if (this.controller) {
-        this.controller.requestReflow();
-    }
-    else {
-        if (!this.reflowTimer) {
-            var me = this;
-            this.reflowTimer = setTimeout(function () {
-                me.reflowTimer = undefined;
-                me.reflow();
-            }, 0);
-        }
+    if (!this.reflowTimer) {
+        var me = this;
+        this.reflowTimer = setTimeout(function () {
+            me.reflowTimer = undefined;
+            me.reflow();
+        }, 0);
     }
 };
 
@@ -54,18 +47,12 @@ Controller.prototype.requestReflow = function () {
  * Request a repaint. The controller will schedule a repaint
  */
 Controller.prototype.requestRepaint = function () {
-    // TODO: remove the check for a parent controller
-    if (this.controller) {
-        this.controller.requestReflow();
-    }
-    else {
-        if (!this.repaintTimer) {
-            var me = this;
-            this.repaintTimer = setTimeout(function () {
-                me.repaintTimer = undefined;
-                me.repaint();
-            }, 0);
-        }
+    if (!this.repaintTimer) {
+        var me = this;
+        this.repaintTimer = setTimeout(function () {
+            me.repaintTimer = undefined;
+            me.repaint();
+        }, 0);
     }
 };
 
