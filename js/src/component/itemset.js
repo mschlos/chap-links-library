@@ -21,7 +21,10 @@ function ItemSet(options) {
         style: 'box',
         align: 'center',
         orientation: 'bottom',
-        margin: 20,
+        margin: {
+            axis: 20,
+            item: 10
+        },
         padding: 5
     };
 
@@ -41,6 +44,7 @@ function ItemSet(options) {
 
     this.items = {};
     this.queue = {};      // queue with items to be added/updated/removed
+    this.stack = new Stack();
     this.conversion = null;
 
     this.setOptions(options);
@@ -63,6 +67,8 @@ ItemSet.prototype.setOptions = function (options) {
     util.forEach(this.options, function (value, name) {
         itemOptions[name] = value;
     });
+
+    this.stack.setOptions(itemOptions);
 };
 
 /**
@@ -192,32 +198,51 @@ ItemSet.prototype.repaint = function () {
  */
 ItemSet.prototype.reflow = function () {
     var changed = 0,
+        options = this.itemOptions,
         update = util.updateProperty,
         frame = this.frame;
 
     if (frame) {
-        // calculate height from items
-        // TODO: only calculate the height when height is not defined as an option
-        var maxHeight = 0;
-        util.forEach(this.items, function (item) {
-            maxHeight = Math.max(maxHeight, item.height);
-        });
-        var height = maxHeight + this.itemOptions.margin;
+        this._updateConversion();
 
+        util.forEach(this.items, function (item) {
+            changed += item.reflow();
+        });
+
+        // TODO: stack.update should be triggered via an event, in stack itself
+        // TODO: only update the stack when there are changed items
+        this.stack.update();
+
+        if (options.height != null) {
+            changed += update(this, 'height', frame.offsetHeight);
+        }
+        else {
+            // height is not specified, determine the height from the height and positioned items
+            var frameHeight = this.height;
+            var maxHeight = 0;
+            if (options.orientation == 'top') {
+                util.forEach(this.items, function (item) {
+                    maxHeight = Math.max(maxHeight, item.top + item.height);
+                });
+            }
+            else {
+                // orientation == 'bottom'
+                util.forEach(this.items, function (item) {
+                    maxHeight = Math.max(maxHeight, frameHeight - item.top);
+                });
+            }
+
+            changed += update(this, 'height', maxHeight + options.margin.axis);
+        }
+
+        // calculate height from items
         changed += update(this, 'top', frame.offsetTop);
         changed += update(this, 'left', frame.offsetLeft);
         changed += update(this, 'width', frame.offsetWidth);
-        changed += update(this, 'height', height);
     }
     else {
         changed += 1;
     }
-
-    this._updateConversion();
-
-    util.forEach(this.items, function (item) {
-        changed += item.reflow();
-    });
 
     return (changed > 0);
 };

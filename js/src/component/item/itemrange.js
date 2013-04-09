@@ -133,7 +133,9 @@ ItemRange.prototype.reflow = function () {
         var update = util.updateProperty,
             box = dom.box,
             parentWidth = options.parent.width,
-            contentLeft;
+            orientation = options.orientation,
+            contentLeft,
+            top;
 
         changed += update(props.content, 'width', dom.content.offsetWidth);
 
@@ -157,7 +159,16 @@ ItemRange.prototype.reflow = function () {
         }
         changed += update(props.content, 'left', contentLeft);
 
-        changed += update(this, 'top', box.offsetTop);
+        if (orientation == 'top') {
+            top = options.margin.axis;
+            changed += update(this, 'top', top);
+        }
+        else {
+            // default or 'bottom'
+            top = options.parent.height - this.height - options.margin.axis;
+            changed += update(this, 'top', top);
+        }
+
         changed += update(this, 'left', start);
         changed += update(this, 'width', Math.max(end - start, 1)); // TODO: reckon with border width;
     }

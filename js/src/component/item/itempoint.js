@@ -142,12 +142,12 @@ ItemPoint.prototype.reflow = function () {
         changed += update(props.content, 'height', dom.content.offsetHeight);
 
         if (orientation == 'top') {
-            top = options.margin;
+            top = options.margin.axis;
         }
         else {
             // default or 'bottom'
             var parentHeight = options.parent.height;
-            top = parentHeight - this.height - options.margin;
+            top = parentHeight - this.height - options.margin.axis;
         }
         changed += update(this, 'top', top);
         changed += update(this, 'left', start - props.dot.width / 2);

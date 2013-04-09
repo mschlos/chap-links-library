@@ -24,7 +24,7 @@ function Range(options) {
 Range.prototype.setOptions = function (options) {
     options = options || {};
 
-    if ('start' in options || 'end' in options) {
+    if (options.start != null || options.end != null) {
         this.setRange(options.start, options.end);
     }
 };

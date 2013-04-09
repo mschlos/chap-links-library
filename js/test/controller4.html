@@ -19,6 +19,7 @@
     <script src="../src/component/item/itembox.js"></script>
     <script src="../src/component/item/itemrange.js"></script>
     <script src="../src/component/item/itempoint.js"></script>
+    <script src="../src/visualization/timeline.js"></script>
 
     <link href="../src/component/css/panel.css" rel="stylesheet" type="text/css" />
     <link href="../src/component/css/timeaxis.css" rel="stylesheet" type="text/css" />
@@ -31,12 +32,14 @@
             padding: 0;
             margin: 0;
             font-family: arial, sans-serif;
+            font-size: 12pt;
         }
 
         #visualization {
             box-sizing: border-box;
             padding: 10px;
             width: 100%;
+            height: 300px;
         }
 
         #visualization .itemset {
@@ -48,43 +51,10 @@
 <body>
 
     <div id="visualization"></div>
-    <div>
-        <button onclick="controller.repaint();">repaint</button>
-        <button onclick="controller.reflow();">reflow</button>
-    </div>
 
     <script>
-        // controller
-        var controller = new Controller();
-
-        // main panel
-        var main = new RootPanel({
-            container: document.getElementById('visualization'),
-            //autoResize: false,
-            height: function () {
-                return timeaxis.height + itemset.height + 20;
-            }
-        });
-        controller.add(main);
-
-        // range
-        var now = moment().minutes(0).seconds(0).milliseconds(0);
-        var range = new Range({
-            start: now.clone().add('days', -3).valueOf(),
-            end: now.clone().add('days', 12).valueOf()
-        });
-        range.listen(main, 'move', 'horizontal');
-        range.listen(main, 'zoom', 'horizontal');
-
-        // time axis
-        var timeaxis = new TimeAxis({
-            //orientation: 'top',
-            range: range,
-            parent: main
-        });
-        controller.add(timeaxis);
-
         // create a dataset with items
+        var now = moment().minutes(0).seconds(0).milliseconds(0);
         var dataset = new DataSet({
             fieldTypes: {
                 start: 'Date'
@@ -99,20 +69,13 @@
             {id: 6, content: 'item 6', start: now.clone().add('days', 11).toDate()}
         ]);
 
-        // items panel
-        var itemset = new ItemSet({
-            //orientation: 'top',
-            parent: main,
-            depends: [timeaxis],
-            range: range,
-            data: dataset,
-            top: function () {
-                return main.height - timeaxis.height - itemset.height;
-            }
+        var timeline = new Timeline({
+            container: document.getElementById('visualization'),
+            start:     now.clone().add('days', -3).valueOf(),
+            end:       now.clone().add('days', 7).valueOf(),
+            dataset:   dataset
         });
-        controller.add(itemset);
 
-        controller.repaint();
 
     </script>
 </body>

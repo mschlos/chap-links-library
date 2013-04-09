@@ -70,7 +70,7 @@ TimeAxis.prototype.setOptions = function (options) {
             });
         }
         else {
-            if (!('start' in options.range) || !('end' in options.range)) {
+            if ((options.range.start != null) || (options.range.end != null)) {
                 throw new TypeError('range must contain a start and end');
             }
 

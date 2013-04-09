@@ -154,7 +154,8 @@ ItemBox.prototype.reflow = function () {
         align = options && options.align,
         orientation = options.orientation,
         changed = 0,
-        top;
+        top,
+        left;
 
     if (dom) {
         changed += update(props.dot, 'height', dom.dot.offsetHeight);
@@ -165,20 +166,22 @@ ItemBox.prototype.reflow = function () {
         changed += update(this, 'height', dom.box.offsetHeight);
 
         if (align == 'right') {
-            changed += update(this, 'left', start - this.width);
+            left = start - this.width;
         }
         else if (align == 'left') {
-            changed += update(this, 'left', start);
+            left = start;
         }
         else {
             // default or 'center'
-            changed += update(this, 'left', start - this.width / 2);
+            left = start - this.width / 2;
         }
+        changed += update(this, 'left', left);
 
         changed += update(props.line, 'left', start - props.line.width / 2);
         changed += update(props.dot, 'left', start - props.dot.width / 2);
         if (orientation == 'top') {
-            top = options.margin;
+            top = options.margin.axis;
+
             changed += update(this, 'top', top);
             changed += update(props.line, 'top', 0);
             changed += update(props.line, 'height', top);
@@ -187,11 +190,11 @@ ItemBox.prototype.reflow = function () {
         else {
             // default or 'bottom'
             var parentHeight = options.parent.height;
-            top = parentHeight - this.height - options.margin;
+            top = parentHeight - this.height - options.margin.axis;
 
             changed += update(this, 'top', top);
             changed += update(props.line, 'top', top + this.height);
-            changed += update(props.line, 'height', Math.max(options.margin, 0));
+            changed += update(props.line, 'height', Math.max(options.margin.axis, 0));
             changed += update(props.dot, 'top', parentHeight - props.dot.height / 2);
         }
     }
@@ -237,7 +240,8 @@ ItemBox.prototype._create = function () {
  */
 ItemBox.prototype.reposition = function () {
     var dom = this.dom,
-        props = this.props;
+        props = this.props,
+        orientation = this.options.orientation;
 
     if (dom) {
         var box = dom.box,
@@ -248,8 +252,17 @@ ItemBox.prototype.reposition = function () {
         box.style.top = this.top + 'px';
 
         line.style.left = props.line.left + 'px';
-        line.style.top = props.line.top + 'px';
-        line.style.height = props.line.height + 'px';
+        if (orientation == 'top') {
+            line.style.top = 0 + 'px';
+            line.style.height = this.top + 'px';
+        }
+        else {
+            // orientation 'bottom'
+            line.style.top = props.line.top + 'px';
+            line.style.top = (this.top + this.height) + 'px';
+            line.style.height = (props.dot.top - this.top - this.height) + 'px';
+
+        }
 
         dot.style.left = props.dot.left + 'px';
         dot.style.top = props.dot.top + 'px';

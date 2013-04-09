@@ -20,7 +20,6 @@ util.isString = function isString(object) {
     return (object instanceof String || typeof object == 'string');
 };
 
-
 /**
  * Test whether given object is a Date, or a String containing a Date
  * @param {Date | String} object
@@ -75,6 +74,21 @@ util.randomUUID = function randomUUID () {
             S4() + '-' +
             S4() + S4() + S4()
         );
+};
+
+/**
+ * Extend object a with the properties of object b
+ * @param {Object} a
+ * @param {Object} b
+ * @return {Object} a
+ */
+util.extend = function (a, b) {
+    for (var prop in b) {
+        if (b.hasOwnProperty(prop)) {
+            a[prop] = b[prop];
+        }
+    }
+    return a;
 };
 
 /**
