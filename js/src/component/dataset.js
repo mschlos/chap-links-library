@@ -210,9 +210,10 @@ DataSet.prototype.update = function (data, senderId) {
 
 /**
  * Get a data item or multiple items
- * @param {String | Number | Array} [ids]   Id of a single item, or an array
- *                                          with multiple id's, or undefined to
- *                                          retrieve all data.
+ * @param {String | Number | Array | Object} [ids]   Id of a single item, or an
+ *                                          array with multiple id's, or
+ *                                          undefined or an Object with options
+ *                                          to retrieve all data.
  * @param {Object} [options]                Available options:
  *                                          {String} [type]
  *                                              'DataTable' or 'Array' (default)

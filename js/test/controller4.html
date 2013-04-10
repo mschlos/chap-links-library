@@ -49,18 +49,18 @@
 
 </head>
 <body>
-
     <div id="visualization"></div>
 
     <script>
         // create a dataset with items
         var now = moment().minutes(0).seconds(0).milliseconds(0);
-        var dataset = new DataSet({
+        var data = new DataSet({
             fieldTypes: {
-                start: 'Date'
+                start: 'Date',
+                end: 'Date'
             }
         });
-        dataset.add([
+        data.add([
             {id: 1, content: 'item 1<br>start', start: now.clone().add('days', 4).toDate()},
             {id: 2, content: 'item 2', start: now.clone().add('days', -2).toDate() },
             {id: 3, content: 'item 3', start: now.clone().add('days', 2).toDate()},
@@ -69,13 +69,13 @@
             {id: 6, content: 'item 6', start: now.clone().add('days', 11).toDate()}
         ]);
 
-        var timeline = new Timeline({
-            container: document.getElementById('visualization'),
-            start:     now.clone().add('days', -3).valueOf(),
-            end:       now.clone().add('days', 7).valueOf(),
-            dataset:   dataset
-        });
+        var container = document.getElementById('visualization');
+        var options = {
+            start: now.clone().add('days', -3).valueOf(),
+            end: now.clone().add('days', 7).valueOf()
+        };
 
+        var timeline = new Timeline(container, data, options);
 
     </script>
 </body>

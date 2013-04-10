@@ -2,22 +2,21 @@
  * An ItemSet holds a set of items and ranges which can be displayed in a
  * range. The width is determined by the parent of the ItemSet, and the height
  * is determined by the size of the items.
- * @param {Object} options   Available parameters:
- *                          {Component} parent
- *                          {String} [id]
- *                          {Range} range
- *                          {DataSet} data
- *                          {String | function} [className]
+ * @param {Component} parent
+ * @param {Component[]} [depends]   Components on which this components depends
+ *                                  (except for the parent)
+ * @param {Object} [options]        See ItemSet.setOptions for the available
+ *                                  options.
  * @constructor ItemSet
  * @extends Panel
  */
-function ItemSet(options) {
+function ItemSet(parent, depends, options) {
     this.id = util.randomUUID();
+    this.parent = parent;
+    this.depends = depends;
+
+    // one options object is shared by this itemset and all its items
     this.options = {
-        orientation: 'bottom'
-    };
-    this.itemOptions = {
-        parent: this,
         style: 'box',
         align: 'center',
         orientation: 'bottom',
@@ -29,7 +28,8 @@ function ItemSet(options) {
     };
 
     var me = this;
-    this.data = null;
+    this.data = null;  // DataSet
+    this.range = null; // Range or Object {start: number, end: number}
     this.listeners = {
         'add': function (event, params) {
             me._onAdd(params.items);
@@ -44,7 +44,7 @@ function ItemSet(options) {
 
     this.items = {};
     this.queue = {};      // queue with items to be added/updated/removed
-    this.stack = new Stack();
+    this.stack = new Stack(this);
     this.conversion = null;
 
     this.setOptions(options);
@@ -52,23 +52,49 @@ function ItemSet(options) {
 
 ItemSet.prototype = new Panel();
 
-// TODO: comment
+/**
+ * Set options for the ItemSet. Existing options will be extended/overwritten.
+ * @param {Object} [options] The following options are available:
+ *                           {String | function} [className]
+ *                              class name for the itemset
+ *                           {String} [style]
+ *                              Default style for the items. Choose from 'box'
+ *                              (default), 'point', or 'range'. The default
+ *                              Style can be overwritten by individual items.
+ *                           {String} align
+ *                              Alignment for the items, only applicable for
+ *                              ItemBox. Choose 'center' (default), 'left', or
+ *                              'right'.
+ *                           {String} orientation
+ *                              Orientation of the item set. Choose 'top' or
+ *                              'bottom' (default).
+ *                           {Number} margin.axis
+ *                              Margin between the axis and the items in pixels.
+ *                              Default is 20.
+ *                           {Number} margin.item
+ *                              Margin between items in pixels. Default is 10.
+ *                           {Number} padding
+ *                              Padding of the contents of an item in pixels.
+ *                              Must correspond with the items css. Default is 5.
+ */
 ItemSet.prototype.setOptions = function (options) {
-    if (options.data) {
-        this._setData(options.data);
-    }
-
-    Component.prototype.setOptions.call(this, options);
+    util.extend(this.options, options);
 
     // TODO: ItemSet should also attach event listeners for rangechange and rangechanged, like timeaxis
 
-    // update the item options
-    var itemOptions = this.itemOptions;
-    util.forEach(this.options, function (value, name) {
-        itemOptions[name] = value;
-    });
+    this.stack.setOptions(this.options);
+};
 
-    this.stack.setOptions(itemOptions);
+/**
+ * Set range (start and end).
+ * @param {Range | Object} range  A Range or an object containing start and end.
+ */
+ItemSet.prototype.setRange = function (range) {
+    if (!(range instanceof Range) && (!range || !range.start || !range.end)) {
+        throw new TypeError('Range must be an instance of Range, ' +
+            'or an object containing start and end.');
+    }
+    this.range = range;
 };
 
 /**
@@ -112,13 +138,13 @@ ItemSet.prototype.repaint = function () {
 
     this._updateConversion();
 
-    var queue = this.queue,
+    var me = this,
+        queue = this.queue,
         data = this.data,
         items = this.items,
         dataOptions = {
             fields: ['id', 'start', 'end', 'content', 'type']
-        },
-        itemOptions = this.itemOptions;
+        };
     // TODO: copy options from the itemset itself?
     // TODO: make orientation dynamically changable for the items
 
@@ -154,7 +180,7 @@ ItemSet.prototype.repaint = function () {
                 if (!item) {
                     // create item
                     if (constructor) {
-                        item = new constructor(itemData, itemOptions);
+                        item = new constructor(me, itemData, options);
                         changed += item.repaint();
                     }
                     else {
@@ -198,7 +224,7 @@ ItemSet.prototype.repaint = function () {
  */
 ItemSet.prototype.reflow = function () {
     var changed = 0,
-        options = this.itemOptions,
+        options = this.options,
         update = util.updateProperty,
         frame = this.frame;
 
@@ -248,14 +274,10 @@ ItemSet.prototype.reflow = function () {
 };
 
 /**
- * Subscribe the ItemSet to events of the current dataset
- * @private
+ * Set data
+ * @param {DataSet | Array | DataTable} data
  */
-ItemSet.prototype._setData = function(data) {
-    if (data && !(data instanceof DataSet)) {
-        throw new TypeError('data must be of type DataSet');
-    }
-
+ItemSet.prototype.setData = function(data) {
     // unsubscribe from current dataset
     var current = this.data;
     if (current) {
@@ -264,17 +286,26 @@ ItemSet.prototype._setData = function(data) {
         });
     }
 
-    // TODO: also support other types of data, then wrap a DataSet around it.
+    if (data instanceof DataSet) {
+        this.data = data;
+    }
+    else {
+        this.data = new DataSet({
+            fieldTypes: {
+                start: 'Date',
+                end: 'Date'
+            }
+        });
+        this.data.add(data);
+    }
 
-    // TODO: subscribe on changes in the dataset
-    this.data = data;
     var id = this.id;
+    var me = this;
     util.forEach(this.listeners, function (callback, event) {
-        data.subscribe(event, callback, id);
+        me.data.subscribe(event, callback, id);
     });
 
-    // TODO: read all data currently in the dataset
-    var dataItems = data.get({filter: ['id']});
+    var dataItems = this.data.get({filter: ['id']});
     var ids = [];
     util.forEach(dataItems, function (dataItem, index) {
         ids[index] = dataItem.id;
@@ -341,19 +372,21 @@ ItemSet.prototype._toQueue = function (ids, action) {
 /**
  * Calculate the factor and offset to convert a position on screen to the
  * corresponding date and vice versa.
- * After the method _updateConversion is executed once, the methods _toTime
- * and _toScreen can be used.
+ * After the method _updateConversion is executed once, the methods toTime
+ * and toScreen can be used.
  * @private
  */
 ItemSet.prototype._updateConversion = function() {
-    var range = this.options.range;
-    if (range) {
-        if (range.conversion) {
-            this.conversion = range.conversion(this.width);
-        }
-        else {
-            this.conversion = Range.conversion(range.start, range.end, this.width);
-        }
+    var range = this.range;
+    if (!range) {
+        throw new Error('No range configured');
+    }
+
+    if (range.conversion) {
+        this.conversion = range.conversion(this.width);
+    }
+    else {
+        this.conversion = Range.conversion(range.start, range.end, this.width);
     }
 };
 
@@ -363,9 +396,8 @@ ItemSet.prototype._updateConversion = function() {
  * executed once.
  * @param {int}     x    Position on the screen in pixels
  * @return {Date}   time The datetime the corresponds with given position x
- * @private
  */
-ItemSet.prototype._toTime = function(x) {
+ItemSet.prototype.toTime = function(x) {
     var conversion = this.conversion;
     return new Date(x / conversion.factor + conversion.offset);
 };
@@ -377,9 +409,8 @@ ItemSet.prototype._toTime = function(x) {
  * @param {Date}   time A date
  * @return {int}   x    The position on the screen in pixels which corresponds
  *                      with the given date.
- * @private
  */
-ItemSet.prototype._toScreen = function(time) {
+ItemSet.prototype.toScreen = function(time) {
     var conversion = this.conversion;
     return (time.valueOf() - conversion.offset) * conversion.factor;
 };

@@ -4,6 +4,7 @@
 function Component () {
     this.id = null;
     this.parent = null;
+    this.depends = null;
     this.controller = null;
     this.options = null;
 
@@ -18,40 +19,15 @@ function Component () {
  * Set parameters for the frame. Parameters will be merged in current parameter
  * set.
  * @param {Object} options  Available parameters:
- *                          {String} [id]
  *                          {String | function} [className]
- *                          {Component[]} [depends]   Components on which this
- *                                                    component depends on
  *                          {String | Number | function} [left]
  *                          {String | Number | function} [top]
  *                          {String | Number | function} [width]
  *                          {String | Number | function} [height]
  */
 Component.prototype.setOptions = function(options) {
-    var me = this;
     if (options) {
-        util.forEach(options, function (value, key) {
-            switch (key) {
-                case 'id':
-                    // id can be set only once
-                    if (me.id == null) {
-                        me.id = value;
-                    }
-                    break;
-
-                case 'depends':
-                    me.depends = value;
-                    break;
-
-                case 'parent':
-                    me.parent = value;
-                    break;
-
-                default:
-                    me.options[key] = value;
-                    break;
-            }
-        });
+        util.extend(this.options, options);
     }
 
     if (this.controller) {
@@ -69,6 +45,14 @@ Component.prototype.setOptions = function(options) {
 Component.prototype.getContainer = function () {
     // should be implemented by the component
     return null;
+};
+
+/**
+ * Get the frame element of the component, the outer HTML DOM element.
+ * @returns {HTMLElement | null} frame
+ */
+Component.prototype.getFrame = function () {
+    return this.frame;
 };
 
 /**

@@ -1,13 +1,13 @@
 /**
  * @constructor ItemRange
  * @extends Item
+ * @param {ItemSet} parent
  * @param {Object} data       Object containing parameters start, end
  *                            content, className.
  * @param {Object} [options]  Options to set initial property values
- *                              {ItemSet} parent
  *                            // TODO: describe available options
  */
-function ItemRange (data, options) {
+function ItemRange (parent, data, options) {
     this.props = {
         content: {
             left: 0,
@@ -15,10 +15,10 @@ function ItemRange (data, options) {
         }
     };
 
-    Item.call(this, data, options);
+    Item.call(this, parent, data, options);
 }
 
-ItemRange.prototype = new Item (null);
+ItemRange.prototype = new Item (null, null);
 
 // register the ItemBox in the item types
 itemTypes['range'] = ItemRange;
@@ -61,7 +61,7 @@ ItemRange.prototype.repaint = function () {
             if (!this.options && !this.options.parent) {
                 throw new Error('Cannot repaint item: no parent attached');
             }
-            var parentContainer = this.options.parent.getContainer();
+            var parentContainer = this.parent.getContainer();
             if (!parentContainer) {
                 throw new Error('Cannot repaint time axis: parent has no container element');
             }
@@ -125,14 +125,15 @@ ItemRange.prototype.reflow = function () {
     var dom = this.dom,
         props = this.props,
         options = this.options,
-        start = options.parent._toScreen(this.data.start),
-        end = options.parent._toScreen(this.data.end),
+        parent = this.parent,
+        start = parent.toScreen(this.data.start),
+        end = parent.toScreen(this.data.end),
         changed = 0;
 
     if (dom) {
         var update = util.updateProperty,
             box = dom.box,
-            parentWidth = options.parent.width,
+            parentWidth = parent.width,
             orientation = options.orientation,
             contentLeft,
             top;
@@ -153,6 +154,7 @@ ItemRange.prototype.reflow = function () {
         if (start < 0) {
             contentLeft = Math.min(-start,
                 (end - start - props.content.width - 2 * options.padding));
+            // TODO: remove the need for options.padding. it's terrible.
         }
         else {
             contentLeft = 0;
@@ -165,7 +167,7 @@ ItemRange.prototype.reflow = function () {
         }
         else {
             // default or 'bottom'
-            top = options.parent.height - this.height - options.margin.axis;
+            top = parent.height - this.height - options.margin.axis;
             changed += update(this, 'top', top);
         }
 

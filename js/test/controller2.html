@@ -47,16 +47,15 @@
         var controller = new Controller();
 
         // main panel
-        var main = new RootPanel({
-            container: document.getElementById('visualization'),
+        var container = document.getElementById('visualization');
+        var main = new RootPanel(container, {
             className: 'main',
             autoResize: true
         });
         controller.add(main);
 
         // sub panel
-        var sub = new Panel({
-            parent: main,
+        var sub = new Panel(main, null, {
             className: 'sub',
             left: 200,
             top: 0,
@@ -71,13 +70,12 @@
             start: moment().valueOf(),
             end: moment().add('days', 50).valueOf()
         });
-        range.listen(main, 'move', 'horizontal');
-        range.listen(main, 'zoom', 'horizontal');
+        range.subscribe(main, 'move', 'horizontal');
+        range.subscribe(main, 'zoom', 'horizontal');
 
         // time axis
-        var timeaxis = new TimeAxis({
-            range: range,
-            parent: sub
+        var timeaxis = new TimeAxis(sub, null, {
+            range: range
         });
         controller.add(timeaxis);
 

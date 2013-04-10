@@ -1,13 +1,13 @@
 /**
  * @constructor ItemPoint
  * @extends Item
+ * @param {ItemSet} parent
  * @param {Object} data       Object containing parameters start
  *                            content, className.
  * @param {Object} [options]  Options to set initial property values
- *                              {ItemSet} parent
  *                            // TODO: describe available options
  */
-function ItemPoint (data, options) {
+function ItemPoint (parent, data, options) {
     this.props = {
         dot: {
             top: 0,
@@ -20,10 +20,10 @@ function ItemPoint (data, options) {
         }
     };
 
-    Item.call(this, data, options);
+    Item.call(this, parent, data, options);
 }
 
-ItemPoint.prototype = new Item (null);
+ItemPoint.prototype = new Item (null, null);
 
 // register the ItemPoint in the item types
 itemTypes['point'] = ItemPoint;
@@ -66,7 +66,7 @@ ItemPoint.prototype.repaint = function () {
             if (!this.options && !this.options.parent) {
                 throw new Error('Cannot repaint item: no parent attached');
             }
-            var parentContainer = this.options.parent.getContainer();
+            var parentContainer = this.parent.getContainer();
             if (!parentContainer) {
                 throw new Error('Cannot repaint time axis: parent has no container element');
             }
@@ -130,7 +130,7 @@ ItemPoint.prototype.reflow = function () {
         props = this.props,
         options = this.options,
         orientation = options.orientation,
-        start = options.parent._toScreen(this.data.start),
+        start = this.parent.toScreen(this.data.start),
         changed = 0,
         top;
 
@@ -146,7 +146,7 @@ ItemPoint.prototype.reflow = function () {
         }
         else {
             // default or 'bottom'
-            var parentHeight = options.parent.height;
+            var parentHeight = this.parent.height;
             top = parentHeight - this.height - options.margin.axis;
         }
         changed += update(this, 'top', top);

@@ -1,8 +1,9 @@
 /**
  * A panel can contain components
+ * @param {Component} [parent]
+ * @param {Component[]} [depends]   Components on which this components depends
+ *                                  (except for the parent)
  * @param {Object} [options]    Available parameters:
- *                              {Component} parent
- *                              {String} [id]
  *                              {String | Number | function} [left]
  *                              {String | Number | function} [top]
  *                              {String | Number | function} [width]
@@ -11,8 +12,10 @@
  * @constructor Panel
  * @extends Component
  */
-function Panel(options) {
+function Panel(parent, depends, options) {
     this.id = util.randomUUID();
+    this.parent = parent;
+    this.depends = depends;
     this.options = {};
 
     this.setOptions(options);

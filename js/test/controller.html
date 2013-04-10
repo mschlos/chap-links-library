@@ -48,8 +48,8 @@
         var controller = new Controller();
 
         // main panel
-        var main = new RootPanel({
-            container: document.getElementById('visualization'),
+        var container = document.getElementById('visualization');
+        var main = new RootPanel(container, {
             autoResize: true
         });
         controller.add(main);
@@ -59,14 +59,13 @@
             start: moment().toDate(),
             end: moment().add('days', 50).toDate()
         });
-        range.listen(main, 'move', 'horizontal');
-        range.listen(main, 'zoom', 'horizontal');
+        range.subscribe(main, 'move', 'horizontal');
+        range.subscribe(main, 'zoom', 'horizontal');
 
         // time axis
-        var timeaxis = new TimeAxis({
+        var timeaxis = new TimeAxis(main, null, {
             orientation: 'top',
-            range: range,
-            parent: main
+            range: range
             /*
             container: function () {
                 return frame.frame;
@@ -86,8 +85,7 @@
         controller.add(timeaxis);
 
         // items panel
-        var items = new Panel({
-            parent: main,
+        var items = new Panel(main, null, {
             className: 'items',
             height: function () {
                 return main.height - timeaxis.height;

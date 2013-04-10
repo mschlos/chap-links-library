@@ -11,6 +11,14 @@ function Range(options) {
     this.start = 0; // Number
     this.end = 0;   // Number
 
+    // TODO: implement range options min, max, zoomMin, zoomMax
+    this.options = {
+        min: null,
+        max: null,
+        zoomMin: null,
+        zoomMax: null
+    };
+
     this.setOptions(options);
 
     this.listeners = [];
@@ -18,8 +26,7 @@ function Range(options) {
 
 /**
  * Set options for the range controller
- * @param {Object} options      Available options:
- *                              {Range} range
+ * @param {Object} options      TODO: describe options
  */
 Range.prototype.setOptions = function (options) {
     options = options || {};
@@ -35,7 +42,7 @@ Range.prototype.setOptions = function (options) {
  * @param {String} event        Available events: 'move', 'zoom'
  * @param {String} direction    Available directions: 'horizontal', 'vertical'
  */
-Range.prototype.listen = function (component, event, direction) {
+Range.prototype.subscribe = function (component, event, direction) {
     var me = this;
     var listener;
 
@@ -429,15 +436,14 @@ Range.prototype.zoom = function(zoomFactor, zoomAround) {
     // only zoom in when interval is larger than minimum interval (to prevent
     // sliding to left/right when having reached the minimum zoom level)
     var interval = (newEnd - newStart);
-    var intervalMin = Number(this.options.intervalMin) || 10;
-    if (intervalMin < 10) {
-        intervalMin = 10;
+    var zoomMin = Number(this.options.zoomMin) || 10;
+    if (zoomMin < 0) {
+        zoomMin = 1;
     }
     */
-
     var interval = (newEnd - newStart);
-    var intervalMin = 1;
-    if (interval >= intervalMin) {
+    var zoomMin = 1;
+    if (interval >= zoomMin) {
         this.setRange(newStart, newEnd);
     }
 };

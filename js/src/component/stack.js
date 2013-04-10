@@ -1,8 +1,11 @@
 /**
  * @constructor Stack
  * Stacks items on top of each other.
+ * @param {ItemSet} parent
+ * @param {Object} [options]
  */
-function Stack (options) {
+function Stack (parent, options) {
+    this.parent = parent;
     this.options = {
         order: function (a, b) {
             return (b.width - a.width) || (a.left - b.left);
@@ -44,9 +47,9 @@ Stack.prototype.update = function() {
  * @private
  */
 Stack.prototype._order = function() {
-    var items = this.options.parent && this.options.parent.items;
+    var items = this.parent.items;
     if (!items) {
-        throw new Error('Cannot stack items: no parent containing items configured');
+        throw new Error('Cannot stack items: parent does not contain items');
     }
 
     // TODO: store the sorted items, to have less work later on

@@ -1,16 +1,17 @@
 /**
  * A horizontal time axis
- * @param {Object} [options] Available parameters:
- *                          {String} [id]
- *                          {Component} parent
- *                          {Component[]} [depends]   Components on which this
- *                                                    component depends on
- *                          {Range | {start:number, end:number} } [range]
+ * @param {Component} parent
+ * @param {Component[]} [depends]   Components on which this components depends
+ *                                  (except for the parent)
+ * @param {Object} [options]        See TimeAxis.setOptions for the available
+ *                                  options.
  * @constructor TimeAxis
  * @extends Component
  */
-function TimeAxis (options) {
+function TimeAxis (parent, depends, options) {
     this.id = util.randomUUID();
+    this.parent = parent;
+    this.depends = depends;
 
     this.dom = {
         majorLines: [],
@@ -31,61 +32,45 @@ function TimeAxis (options) {
             minimumStep: 0
         }
     };
-    this.options = {};
+
+    this.options = {
+        orientation: 'bottom',  // supported: 'top', 'bottom'
+        // TODO: implement timeaxis orientations 'left' and 'right'
+        showMinorLabels: true,
+        showMajorLabels: true
+    };
+
     this.conversion = null;
     this.range = null;
-
-    // default configuration
-    this.options.orientation = 'bottom';  // supported: 'top', 'bottom'
-    // TODO: implement timeaxis orientations 'left' and 'right'
-    this.options.moveable = true;
-    this.options.zoomable = true;
-    this.options.showMinorLabels = true;
-    this.options.showMajorLabels = true;
-    this.options.intervalMin = 10;
-    this.options.intervalMax = 10;
 
     this.setOptions(options);
 }
 
 TimeAxis.prototype = new Component();
 
-// TODO: comment
+// TODO: comment options
 TimeAxis.prototype.setOptions = function (options) {
-    Component.prototype.setOptions.call(this, options);
+    util.extend(this.options, options);
+};
 
-    if (options.range) {
-        if (options.range instanceof Range) {
-            this.range = options.range;
-
-            // TODO: first unregister events from an existing range
-
-            var me = this;
-            this.range.on('rangechange', function () {
-                // TODO: fix the delay in reflow/repaint, does not feel snappy
-                me.requestReflow();
-            });
-            this.range.on('rangechanged', function () {
-                me.requestReflow();
-            });
-        }
-        else {
-            if ((options.range.start != null) || (options.range.end != null)) {
-                throw new TypeError('range must contain a start and end');
-            }
-
-            this.range = options.range;
-        }
+/**
+ * Set a range (start and end)
+ * @param {Range | Object} range  A Range or an object containing start and end.
+ */
+TimeAxis.prototype.setRange = function (range) {
+    if (!(range instanceof Range) && (!range || !range.start || !range.end)) {
+        throw new TypeError('Range must be an instance of Range, ' +
+            'or an object containing start and end.');
     }
+    this.range = range;
 };
 
 /**
  * Convert a position on screen (pixels) to a datetime
  * @param {int}     x    Position on the screen in pixels
  * @return {Date}   time The datetime the corresponds with given position x
- * @private
  */
-TimeAxis.prototype._toTime = function(x) {
+TimeAxis.prototype.toTime = function(x) {
     var conversion = this.conversion;
     return new Date(x / conversion.factor + conversion.offset);
 };
@@ -97,7 +82,7 @@ TimeAxis.prototype._toTime = function(x) {
  *                      with the given date.
  * @private
  */
-TimeAxis.prototype._toScreen = function(time) {
+TimeAxis.prototype.toScreen = function(time) {
     var conversion = this.conversion;
     return (time.valueOf() - conversion.offset) * conversion.factor;
 };
@@ -160,7 +145,7 @@ TimeAxis.prototype.repaint = function () {
             while (step.hasNext() && max < 1000) {
                 max++;
                 var cur = step.getCurrent(),
-                    x = this._toScreen(cur),
+                    x = this.toScreen(cur),
                     isMajor = step.isMajor();
 
                 // TODO: lines must have a width, such that we can create css backgrounds
@@ -187,7 +172,7 @@ TimeAxis.prototype.repaint = function () {
 
             // create a major label on the left when needed
             if (options.showMajorLabels) {
-                var leftTime = this._toTime(0),
+                var leftTime = this.toTime(0),
                     leftText = step.getLabelMajor(leftTime),
                     widthText = leftText.length * (props.majorCharWidth || 10) + 10; // upper bound estimation
 
@@ -500,15 +485,11 @@ TimeAxis.prototype.reflow = function () {
         changed += update(this, 'height', height);
 
         // calculate range and step
-        if (range.conversion) {
-            this.conversion = range.conversion(this.width);
-        }
-        else {
-            this.conversion = Range.conversion(range.start, range.end, this.width);
-        }
+        this._updateConversion();
+
         var start = util.cast(range.start, 'Date'),
             end = util.cast(range.end, 'Date'),
-            minimumStep = this._toTime((props.minorCharWidth || 10) * 5) - this._toTime(0);
+            minimumStep = this.toTime((props.minorCharWidth || 10) * 5) - this.toTime(0);
         this.step = new TimeStep(start, end, minimumStep);
         changed += update(props.range, 'start', start.valueOf());
         changed += update(props.range, 'end', end.valueOf());
@@ -516,4 +497,25 @@ TimeAxis.prototype.reflow = function () {
     }
 
     return (changed > 0);
+};
+
+/**
+ * Calculate the factor and offset to convert a position on screen to the
+ * corresponding date and vice versa.
+ * After the method _updateConversion is executed once, the methods toTime
+ * and toScreen can be used.
+ * @private
+ */
+TimeAxis.prototype._updateConversion = function() {
+    var range = this.range;
+    if (!range) {
+        throw new Error('No range configured');
+    }
+
+    if (range.conversion) {
+        this.conversion = range.conversion(this.width);
+    }
+    else {
+        this.conversion = Range.conversion(range.start, range.end, this.width);
+    }
 };

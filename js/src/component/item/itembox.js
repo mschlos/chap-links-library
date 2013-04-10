@@ -1,13 +1,13 @@
 /**
  * @constructor ItemBox
  * @extends Item
+ * @param {ItemSet} parent
  * @param {Object} data       Object containing parameters start
  *                            content, className.
  * @param {Object} [options]  Options to set initial property values
- *                              {ItemSet} parent
  *                            // TODO: describe available options
  */
-function ItemBox (data, options) {
+function ItemBox (parent, data, options) {
     this.props = {
         dot: {
             left: 0,
@@ -23,10 +23,10 @@ function ItemBox (data, options) {
         }
     };
 
-    Item.call(this, data, options);
+    Item.call(this, parent, data, options);
 }
 
-ItemBox.prototype = new Item (null);
+ItemBox.prototype = new Item (null, null);
 
 // register the ItemBox in the item types
 itemTypes['box'] = ItemBox;
@@ -66,10 +66,10 @@ ItemBox.prototype.repaint = function () {
         dom = this.dom;
 
         if (dom) {
-            if (!this.options && !this.options.parent) {
+            if (!this.options && !this.parent) {
                 throw new Error('Cannot repaint item: no parent attached');
             }
-            var parentContainer = this.options.parent.getContainer();
+            var parentContainer = this.parent.getContainer();
             if (!parentContainer) {
                 throw new Error('Cannot repaint time axis: parent has no container element');
             }
@@ -150,7 +150,7 @@ ItemBox.prototype.reflow = function () {
         dom = this.dom,
         props = this.props,
         options = this.options,
-        start = options.parent._toScreen(this.data.start),
+        start = this.parent.toScreen(this.data.start),
         align = options && options.align,
         orientation = options.orientation,
         changed = 0,
@@ -189,7 +189,7 @@ ItemBox.prototype.reflow = function () {
         }
         else {
             // default or 'bottom'
-            var parentHeight = options.parent.height;
+            var parentHeight = this.parent.height;
             top = parentHeight - this.height - options.margin.axis;
 
             changed += update(this, 'top', top);

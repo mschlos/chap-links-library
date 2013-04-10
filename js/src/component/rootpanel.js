@@ -1,21 +1,14 @@
 /**
  * A root panel can hold components. The root panel must be initialized with
  * a DOM element as container.
- * @param {Object} [options]    Available parameters:
- *                              {HTMLElement} container
- *                              {String} [id]
- *                              {String | function} [className]
- *                              {String | Number | function} [left]
- *                              {String | Number | function} [top]
- *                              {String | Number | function} [width]
- *                              {String | Number | function} [height]
- *                              {String | Number | function} [height]
- *                              {Boolean | function} [autoResize]
+ * @param {HTMLElement} container
+ * @param {Object} [options]    Available parameters: see RootPanel.setOptions.
  * @constructor RootPanel
  * @extends Panel
  */
-function RootPanel(options) {
+function RootPanel(container, options) {
     this.id = util.randomUUID();
+    this.container = container;
     this.options = {
         autoResize: true
     };
@@ -27,9 +20,19 @@ function RootPanel(options) {
 
 RootPanel.prototype = new Panel();
 
-// TODO: comment
+/**
+ * Set options. Will extend the current options.
+ * @param {Object} [options]    Available parameters:
+ *                              {String | function} [className]
+ *                              {String | Number | function} [left]
+ *                              {String | Number | function} [top]
+ *                              {String | Number | function} [width]
+ *                              {String | Number | function} [height]
+ *                              {String | Number | function} [height]
+ *                              {Boolean | function} [autoResize]
+ */
 RootPanel.prototype.setOptions = function (options) {
-    Component.prototype.setOptions.call(this, options);
+    util.extend(this.options, options);
 
     if (this.options.autoResize) {
         this._watch();
@@ -61,10 +64,10 @@ RootPanel.prototype.repaint = function () {
         changed += 1;
     }
     if (!frame.parentNode) {
-        if (!this.options.container) {
+        if (!this.container) {
             throw new Error('Cannot repaint root panel: no container attached');
         }
-        this.options.container.appendChild(frame);
+        this.container.appendChild(frame);
         changed += 1;
     }
 

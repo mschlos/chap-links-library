@@ -1,23 +1,28 @@
 /**
- * Create a timeline
- * @param {Object} options  // TODO: describe the available options
+ * Create a timeline visualization
+ * @param {HTMLElement} container
+ * @param {DataSet | Array | DataTable} [data]
+ * @param {Object} [options]  // TODO: describe the available options
  * @constructor
  */
-function Timeline (options) {
+function Timeline (container, data, options) {
     var me = this;
     this.options = {
-        orientation: 'bottom'
+        orientation: 'bottom',
+        zoomMin: 10,     // milliseconds
+        zoomMax: 1000 * 60 * 60 * 24 * 365 * 10000, // milliseconds
+        moveable: true,
+        zoomable: true
     };
 
     // controller
     this.controller = new Controller();
 
     // main panel
-    if (!options.container) {
-        throw new Error('No container element specified in options');
+    if (!container) {
+        throw new Error('No container element provided');
     }
-    this.main = new RootPanel({
-        container: options.container,
+    this.main = new RootPanel(container, {
         autoResize: false,
         height: function () {
             return me.timeaxis.height + me.itemset.height;
@@ -33,29 +38,39 @@ function Timeline (options) {
     this.range = new Range({
         start: start,
         end: end
+        // TODO: apply options zoomMin and zoomMax to range
     });
-    this.range.listen(this.main, 'move', 'horizontal');
-    this.range.listen(this.main, 'zoom', 'horizontal');
+    // TODO: reckon with options moveable and zoomable
+    this.range.subscribe(this.main, 'move', 'horizontal');
+    this.range.subscribe(this.main, 'zoom', 'horizontal');
+    this.range.on('rangechange', function () {
+        // TODO: fix the delay in reflow/repaint, does not feel snappy
+        me.controller.requestReflow();
+    });
+    this.range.on('rangechanged', function () {
+        me.controller.requestReflow();
+    });
+
+    // TODO: put the listeners in setOptions, be able to dynamically change with options moveable and zoomable
 
     // time axis
-    this.timeaxis = new TimeAxis({
+    this.timeaxis = new TimeAxis(this.main, null, {
         orientation: this.options.orientation,
-        range: this.range,
-        parent: this.main
+        range: this.range
     });
+    this.timeaxis.setRange(this.range);
     this.controller.add(this.timeaxis);
 
     // items panel
-    if (!options.dataset) {
-        throw new Error('No dataset specified in options');
-    }
-    this.itemset = new ItemSet({
+    this.itemset = new ItemSet(this.main, [this.timeaxis], {
         orientation: this.options.orientation,
-        parent: me.main,
-        depends: [this.timeaxis],
         range: this.range,
-        data: options.dataset
+        data: data
     });
+    this.itemset.setRange(this.range);
+    if (data) {
+        this.setData(data);
+    }
     this.controller.add(this.itemset);
 
     this.setOptions(options);
@@ -92,4 +107,12 @@ Timeline.prototype.setOptions = function (options) {
     });
 
     this.controller.repaint();
+};
+
+/**
+ * Set data
+ * @param {DataSet | Array | DataTable} data
+ */
+Timeline.prototype.setData = function(data) {
+    this.itemset.setData(data);
 };
