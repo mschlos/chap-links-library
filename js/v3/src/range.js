@@ -3,7 +3,7 @@
  * A Range controls a numeric range with a start and end value.
  * The Range adjusts the range based on mouse events or programmatic changes,
  * and triggers events when the range is changing or has been changed.
- * @param {Object} [options]   TODO: describe the options
+ * @param {Object} [options]   See description at Range.setOptions
  * @extends Controller
  */
 function Range(options) {
@@ -11,7 +11,6 @@ function Range(options) {
     this.start = 0; // Number
     this.end = 0;   // Number
 
-    // TODO: implement range options min, max, zoomMin, zoomMax
     this.options = {
         min: null,
         max: null,
@@ -26,10 +25,18 @@ function Range(options) {
 
 /**
  * Set options for the range controller
- * @param {Object} options      TODO: describe options
+ * @param {Object} options      Available options:
+ *                              {Number} start  Set start value of the range
+ *                              {Number} end    Set end value of the range
+ *                              {Number} min    Minimum value for start
+ *                              {Number} max    Maximum value for end
+ *                              {Number} zoomMin    Set a minimum value for
+ *                                                  (end - start).
+ *                              {Number} zoomMax    Set a maximum value for
+ *                                                  (end - start).
  */
 Range.prototype.setOptions = function (options) {
-    options = options || {};
+    util.extend(this.options, options);
 
     if (options.start != null || options.end != null) {
         this.setRange(options.start, options.end);
@@ -134,6 +141,7 @@ Range.prototype.setRange = function(start, end) {
 Range.prototype._applyRange = function(start, end) {
     var newStart = util.cast(start, 'Number');
     var newEnd = util.cast(end, 'Number');
+    var diff;
 
     // check for valid number
     if (newStart == null || isNaN(newStart)) {
@@ -148,7 +156,67 @@ Range.prototype._applyRange = function(start, end) {
         newEnd = newStart;
     }
 
-    // TODO: validate min and max options
+    // prevent start < min
+    if (this.options.min != null) {
+        var min = this.options.min.valueOf();
+        if (newStart < min) {
+            diff = (min - newStart);
+            newStart += diff;
+            newEnd += diff;
+        }
+    }
+
+    // prevent end > max
+    if (this.options.max != null) {
+        var max = this.options.max.valueOf();
+        if (newEnd > max) {
+            diff = (newEnd - max);
+            newStart -= diff;
+            newEnd -= diff;
+        }
+    }
+
+    // prevent (end-start) > zoomMin
+    if (this.options.zoomMin != null) {
+        var zoomMin = this.options.zoomMin.valueOf();
+        if (zoomMin < 0) {
+            zoomMin = 0;
+        }
+        if ((newEnd - newStart) < zoomMin) {
+            if ((this.end - this.start) > zoomMin) {
+                // zoom to the minimum
+                diff = (zoomMin - (newEnd - newStart));
+                newStart -= diff / 2;
+                newEnd += diff / 2;
+            }
+            else {
+                // ingore this action, we are already zoomed to the minimum
+                newStart = this.start;
+                newEnd = this.end;
+            }
+        }
+    }
+
+    // prevent (end-start) > zoomMin
+    if (this.options.zoomMax != null) {
+        var zoomMax = this.options.zoomMax.valueOf();
+        if (zoomMax < 0) {
+            zoomMax = 0;
+        }
+        if ((newEnd - newStart) > zoomMax) {
+            if ((this.end - this.start) < zoomMax) {
+                // zoom to the maximum
+                diff = ((newEnd - newStart) - zoomMax);
+                newStart += diff / 2;
+                newEnd -= diff / 2;
+            }
+            else {
+                // ingore this action, we are already zoomed to the maximum
+                newStart = this.start;
+                newEnd = this.end;
+            }
+        }
+    }
 
     var changed = (this.start != newStart || this.end != newEnd);
 
@@ -430,22 +498,9 @@ Range.prototype.zoom = function(zoomFactor, zoomAround) {
 
     // calculate new start and end
     var newStart = this.start - startDiff * zoomFactor;
-    var newEnd   = this.end - endDiff * zoomFactor;
+    var newEnd = this.end - endDiff * zoomFactor;
 
-    /* TODO: reckon with minimum interval
-    // only zoom in when interval is larger than minimum interval (to prevent
-    // sliding to left/right when having reached the minimum zoom level)
-    var interval = (newEnd - newStart);
-    var zoomMin = Number(this.options.zoomMin) || 10;
-    if (zoomMin < 0) {
-        zoomMin = 1;
-    }
-    */
-    var interval = (newEnd - newStart);
-    var zoomMin = 1;
-    if (interval >= zoomMin) {
-        this.setRange(newStart, newEnd);
-    }
+    this.setRange(newStart, newEnd);
 };
 
 /**

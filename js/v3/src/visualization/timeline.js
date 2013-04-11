@@ -2,7 +2,7 @@
  * Create a timeline visualization
  * @param {HTMLElement} container
  * @param {DataSet | Array | DataTable} [data]
- * @param {Object} [options]  // TODO: describe the available options
+ * @param {Object} [options]  See Timeline.setOptions for the available options.
  * @constructor
  */
 function Timeline (container, data, options) {
@@ -38,7 +38,6 @@ function Timeline (container, data, options) {
     this.range = new Range({
         start: start,
         end: end
-        // TODO: apply options zoomMin and zoomMax to range
     });
     // TODO: reckon with options moveable and zoomable
     this.range.subscribe(this.main, 'move', 'horizontal');
@@ -84,9 +83,10 @@ Timeline.prototype.setOptions = function (options) {
     util.extend(this.options, options);
 
     // update options the timeaxis
-    this.timeaxis.setOptions({
-        orientation: this.options.orientation
-    });
+    this.timeaxis.setOptions(this.options);
+
+    // update options for the range
+    this.range.setOptions(this.options);
 
     // update options the itemset
     var top,
