@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Povijesni datumi RH | Historical dates Republic of Croatia</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+    <script type="text/javascript" src="/js/timeline//lib/jquery-1.9.1.js"></script>
+    <script type="text/javascript" src="/js/timeline//lib/jquery-ui.js"></script>
+    <script type="text/javascript" src="/js/timeline/lib/jquery.themeswitcher.js"></script>
+
+    <script type="text/javascript" src="http://www.google.com/jsapi"></script>
+    <script type="text/javascript" src="/js/timeline//timeline.js"></script>
+    <link rel="stylesheet" type="text/css" href="/js/timeline/timeline-theme.css">
+
+    <style>
+        body,
+        .ui-widget,
+        .ui-widget input,
+        .ui-widget select,
+        .ui-widget textarea,
+        .ui-widget button,
+        .ui-widget-header,
+        .ui-widget-content,
+        .ui-widget-header .ui-widget-header,
+        .ui-widget-content .ui-widget-content {
+            font-family: Arial, "Trebuchet MS", Verdana, sans-serif !important;
+            font-size: 12px !important;
+        }
+    </style>
+
+    <script type="text/javascript">
+        $(document).ready(function () {
+            $("#switcher").themeswitcher({
+                imgpath: "/js/timeline/img/themeswitcher/",
+                loadtheme: "sunny"
+            });
+        });
+
+        google.load("visualization", "1");
+
+        // Set callback to run when API is loaded
+        google.setOnLoadCallback(drawVisualization);
+
+        var timeline;
+        var data;
+
+        function getSelectedRow() {
+            var row = undefined
+            var sel = timeline.getSelection();
+            if (sel.length) {
+                if (sel[0].row != undefined) {
+                    var row = sel[0].row;
+                }
+            }
+            return row;
+        }
+
+        // Called when the Visualization API is loaded.
+        function drawVisualization() {
+            // Create and populate a data table.
+            data = new google.visualization.DataTable();
+            data.addColumn('datetime', 'start');
+            data.addColumn('datetime', 'end');
+            data.addColumn('string', 'content');
+
+            data.addRows([
+                [new Date(1990, 05, 30), , '<div>Konstituiran prvi višestranački Sabor nakon II. svjetskog rata.</div>'],
+                [new Date(1990, 12, 22), , '<div>Donesen Ustav Republike Hrvatske.</div>'],
+                [new Date(1991, 10, 08), , '<span onclick="alert(\'Donesena odluka o raskidu svih državnopravnih sveza s republikama koje su tvorile SFRJ, proglašena samostalnost.\')">Proglašena samostalnost. Klik za više!</span>'],
+                [new Date(1992, 05, 22), , 'Republika Hrvatska primljena kao 178. članica u UN.'],
+                [new Date(1996, 11, 06), , '<div>Republika Hrvatska postala 40. punopravna članica Vijeća Europe.</div>'],
+                [new Date(2000, 05, 25), , 'Republika Hrvatska postala 27. članica Partnerstva za mir.'],
+                [new Date(2000, 11, 30), , '<div>Republika Hrvatska postala članica Svjetske trgovinske organizacije (WTO).</div>']
+         		[new Date(2008, 01, 01), , '<div>Republika Hrvatska postala nestalna članica Vijeća sigurnosti UN s mandatom 2008. – 2009. god.</div>'],
+                [new Date(2009, 04, 01), , 'Republika Hrvatska postala punopravna članica Sjevernoatlantskog saveza (NATO).'],
+                [new Date(2013, 07, 01), , '<div>Republika Hrvatska postala 28. članica Europske unije.</div>']
+            ]);
+
+            // specify options
+            var options = {
+                width: "100%",
+                editable: true,   // enable dragging and editing events
+                enableKeys: true,
+                axisOnTop: false,
+                showNavigation: true,
+                showButtonNew: true,
+                animate: true,
+                animateZoom: true,
+                layout: "box"
+            };
+
+            timeline = new links.Timeline(document.getElementById('mytimeline'), options);
+            timeline.draw(data);
+        }
+    </script>
+</head>
+
+<body>
+<h1><strong>Ova stranica pokazuje važne povijesne datume Republike Hrvatske.</strong></h1>
+
+<p>
+
+<div id="switcher"></div>
+</p>
+
+<div id="mytimeline"></div>
+
+<!-- Information about where the used icons come from -->
+<p style="color:gray; font-size:10px; font-style:italic;">
+    Informacije preuzete iz <a href="http://hidra.srce.hr/arhiva/1584/106779/MVD2014-WEBA.pdf" target="_blank" title="Republika Hrvatska - Mali vodič = Republic of Croatia - Mini Guide" style="color:gray;">Republika Hrvatska - Mali vodič / Republic of Croatia - Mini Guide</a>
+    publikacija <a href="http://digured.net" target="_blank" title="Digitalni informacijsko-dokumentacijski ured" style="color:gray;">Digitalnog informacijsko-dokumentacijskog ureda</a>, a kreirao <a href="https://github.com/schlos">Miroslav</a>, Kodiraj za Hrvatsku.
+</p>
+</body>
+</html>
