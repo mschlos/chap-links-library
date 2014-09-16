@@ -299,6 +299,15 @@ ul.inheritsList
 						</tr>
 					
 						<tr>
+							<td class="attributes">&lt;static&gt; &nbsp;</td>
+							<td class="nameDescription">
+								<div class="fixedFont">links.Graph.<b><a href="../symbols/links.Graph.html#.isOutside">isOutside</a></b>(event, parent)
+								</div>
+								<div class="description">Check if an event took place outside a specified parent element.</div>
+							</td>
+						</tr>
+					
+						<tr>
 							<td class="attributes">&nbsp;</td>
 							<td class="nameDescription">
 								<div class="fixedFont"><b><a href="../symbols/links.Graph.html#onmousemove">onmousemove</a></b>(event)
@@ -311,6 +320,15 @@ ul.inheritsList
 							<td class="attributes">&nbsp;</td>
 							<td class="nameDescription">
 								<div class="fixedFont"><b><a href="../symbols/links.Graph.html#onmouseup">onmouseup</a></b>(event)
+								</div>
+								<div class="description"></div>
+							</td>
+						</tr>
+					
+						<tr>
+							<td class="attributes">&nbsp;</td>
+							<td class="nameDescription">
+								<div class="fixedFont"><b><a href="../symbols/links.Graph.html#onmouseupoutside">onmouseupoutside</a></b>(event)
 								</div>
 								<div class="description"></div>
 							</td>
@@ -373,7 +391,7 @@ ul.inheritsList
 						<tr>
 							<td class="attributes">&nbsp;</td>
 							<td class="nameDescription">
-								<div class="fixedFont"><b><a href="../symbols/links.Graph.html#screenToY">screenToY</a></b>(ys)
+								<div class="fixedFont"><b><a href="../symbols/links.Graph.html#screenToY">screenToY</a></b>()
 								</div>
 								<div class="description"></div>
 							</td>
@@ -484,7 +502,7 @@ executed once.</div>
 						<tr>
 							<td class="attributes">&nbsp;</td>
 							<td class="nameDescription">
-								<div class="fixedFont"><b><a href="../symbols/links.Graph.html#yToScreen">yToScreen</a></b>(y)
+								<div class="fixedFont"><b><a href="../symbols/links.Graph.html#yToScreen">yToScreen</a></b>()
 								</div>
 								<div class="description"></div>
 							</td>
@@ -718,6 +736,55 @@ TODO: describe all options
 
 					<hr />
 				
+					<a name=".isOutside"> </a>
+					<div class="fixedFont">&lt;static&gt; 
+					
+					<span class="light">{boolean}</span>
+					<span class="light">links.Graph.</span><b>isOutside</b>(event, parent)
+					
+					</div>
+					<div class="description">
+						Check if an event took place outside a specified parent element.
+						
+						
+					</div>
+					
+					
+					
+						
+							<dl class="detailList">
+							<dt class="heading">Parameters:</dt>
+							
+								<dt>
+									<span class="light fixedFont">{Event}</span> <b>event</b>
+									
+								</dt>
+								<dd>A javascript (mouse) event object</dd>
+							
+								<dt>
+									<span class="light fixedFont">{Element}</span> <b>parent</b>
+									
+								</dt>
+								<dd>The DOM element to check if event was inside it</dd>
+							
+							</dl>
+						
+						
+						
+						
+						
+							<dl class="detailList">
+							<dt class="heading">Returns:</dt>
+							
+								<dd><span class="light fixedFont">{boolean}</span> </dd>
+							
+							</dl>
+						
+						
+						
+
+					<hr />
+				
 					<a name="onmousemove"> </a>
 					<div class="fixedFont">
 					
@@ -759,6 +826,42 @@ TODO: describe all options
 					
 					
 					<b>onmouseup</b>(event)
+					
+					</div>
+					<div class="description">
+						
+						
+						
+					</div>
+					
+					
+					
+						
+							<dl class="detailList">
+							<dt class="heading">Parameters:</dt>
+							
+								<dt>
+									<b>event</b>
+									
+								</dt>
+								<dd></dd>
+							
+							</dl>
+						
+						
+						
+						
+						
+						
+						
+
+					<hr />
+				
+					<a name="onmouseupoutside"> </a>
+					<div class="fixedFont">
+					
+					
+					<b>onmouseupoutside</b>(event)
 					
 					</div>
 					<div class="description">
@@ -1025,7 +1128,7 @@ end time are changed, or when data is added or removed dynamically.
 					<div class="fixedFont">
 					
 					
-					<b>screenToY</b>(ys)
+					<b>screenToY</b>()
 					
 					</div>
 					<div class="description">
@@ -1036,17 +1139,6 @@ end time are changed, or when data is added or removed dynamically.
 					
 					
 					
-						
-							<dl class="detailList">
-							<dt class="heading">Parameters:</dt>
-							
-								<dt>
-									<b>ys</b>
-									
-								</dt>
-								<dd></dd>
-							
-							</dl>
 						
 						
 						
@@ -1494,7 +1586,7 @@ executed once.
 					<div class="fixedFont">
 					
 					
-					<b>yToScreen</b>(y)
+					<b>yToScreen</b>()
 					
 					</div>
 					<div class="description">
@@ -1505,17 +1597,6 @@ executed once.
 					
 					
 					
-						
-							<dl class="detailList">
-							<dt class="heading">Parameters:</dt>
-							
-								<dt>
-									<b>y</b>
-									
-								</dt>
-								<dd></dd>
-							
-							</dl>
 						
 						
 						
@@ -1538,7 +1619,7 @@ executed once.
 <!-- ============================== footer ================================= -->
 		<div class="fineprint" style="clear:both">
 			
-			Documentation generated by <a href="http://code.google.com/p/jsdoc-toolkit/" target="_blank">JsDoc Toolkit</a> 2.3.2 on Mon Mar 04 2013 13:56:00 GMT+0100 (CET)
+			Documentation generated by <a href="http://code.google.com/p/jsdoc-toolkit/" target="_blank">JsDoc Toolkit</a> 2.3.2 on Tue Aug 20 2013 14:42:13 GMT+0200 (CEST)
 		</div>
 	</body>
 </html>

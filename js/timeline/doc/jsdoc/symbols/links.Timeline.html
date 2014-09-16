@@ -203,6 +203,8 @@ ul.inheritsList
 	
 	<li><a href="../symbols/links.Timeline.ItemDot.html">links.Timeline.ItemDot</a></li>
 	
+	<li><a href="../symbols/links.Timeline.ItemFloatingRange.html">links.Timeline.ItemFloatingRange</a></li>
+	
 	<li><a href="../symbols/links.Timeline.ItemRange.html">links.Timeline.ItemRange</a></li>
 	
 	<li><a href="../symbols/links.Timeline.StepDate.html">links.Timeline.StepDate</a></li>
@@ -246,7 +248,7 @@ ul.inheritsList
 						<td class="attributes">&nbsp;</td>
 						<td class="nameDescription" >
 							<div class="fixedFont">
-								<b><a href="../symbols/links.Timeline.html#constructor">links.Timeline</a></b>(container)
+								<b><a href="../symbols/links.Timeline.html#constructor">links.Timeline</a></b>(container, options)
 							</div>
 							<div class="description"></div>
 						</td>
@@ -277,7 +279,7 @@ ul.inheritsList
 							<td class="nameDescription">
 								<div class="fixedFont">links.Timeline.<b><a href="../symbols/links.Timeline.html#.addClassName">addClassName</a></b>(elem, className)
 								</div>
-								<div class="description">add a className to the given elements style</div>
+								<div class="description">Adds one or more className's to the given elements style</div>
 							</td>
 						</tr>
 					
@@ -389,6 +391,15 @@ the created clusters.</div>
 						</tr>
 					
 						<tr>
+							<td class="attributes">&lt;static&gt; &nbsp;</td>
+							<td class="nameDescription">
+								<div class="fixedFont">links.Timeline.<b><a href="../symbols/links.Timeline.html#.clone">clone</a></b>(object)
+								</div>
+								<div class="description">Shallow clone an object</div>
+							</td>
+						</tr>
+					
+						<tr>
 							<td class="attributes">&nbsp;</td>
 							<td class="nameDescription">
 								<div class="fixedFont"><b><a href="../symbols/links.Timeline.html#clusterItems">clusterItems</a></b>()
@@ -471,6 +482,15 @@ The items must have parameters left, right, top, and bottom.</div>
 						</tr>
 					
 						<tr>
+							<td class="attributes">&nbsp;</td>
+							<td class="nameDescription">
+								<div class="fixedFont"><b><a href="../symbols/links.Timeline.html#finalItemsPosition">finalItemsPosition</a></b>(items, groupBase, group)
+								</div>
+								<div class="description"></div>
+							</td>
+						</tr>
+					
+						<tr>
 							<td class="attributes">&lt;static&gt; &nbsp;</td>
 							<td class="nameDescription">
 								<div class="fixedFont">links.Timeline.<b><a href="../symbols/links.Timeline.html#.getAbsoluteLeft">getAbsoluteLeft</a></b>(elem)
@@ -485,6 +505,25 @@ The items must have parameters left, right, top, and bottom.</div>
 								<div class="fixedFont">links.Timeline.<b><a href="../symbols/links.Timeline.html#.getAbsoluteTop">getAbsoluteTop</a></b>(elem)
 								</div>
 								<div class="description">Retrieve the absolute top value of a DOM element</div>
+							</td>
+						</tr>
+					
+						<tr>
+							<td class="attributes">&nbsp;</td>
+							<td class="nameDescription">
+								<div class="fixedFont"><b><a href="../symbols/links.Timeline.html#getCluster">getCluster</a></b>(index)
+								</div>
+								<div class="description">Retrieve the properties of a cluster.</div>
+							</td>
+						</tr>
+					
+						<tr>
+							<td class="attributes">&nbsp;</td>
+							<td class="nameDescription">
+								<div class="fixedFont"><b><a href="../symbols/links.Timeline.html#getClusterIndex">getClusterIndex</a></b>(element)
+								</div>
+								<div class="description">Find the cluster index from a given HTML element
+If no cluster index is found, undefined is returned</div>
 							</td>
 						</tr>
 					
@@ -571,6 +610,24 @@ If no item index is found, undefined is returned</div>
 						</tr>
 					
 						<tr>
+							<td class="attributes">&nbsp;</td>
+							<td class="nameDescription">
+								<div class="fixedFont"><b><a href="../symbols/links.Timeline.html#getItemsByGroup">getItemsByGroup</a></b>(items)
+								</div>
+								<div class="description"></div>
+							</td>
+						</tr>
+					
+						<tr>
+							<td class="attributes">&nbsp;</td>
+							<td class="nameDescription">
+								<div class="fixedFont"><b><a href="../symbols/links.Timeline.html#getOptions">getOptions</a></b>()
+								</div>
+								<div class="description">Get options for the timeline.</div>
+							</td>
+						</tr>
+					
+						<tr>
 							<td class="attributes">&lt;static&gt; &nbsp;</td>
 							<td class="nameDescription">
 								<div class="fixedFont">links.Timeline.<b><a href="../symbols/links.Timeline.html#.getPageX">getPageX</a></b>(event)
@@ -612,6 +669,25 @@ If no item index is found, undefined is returned</div>
 								<div class="fixedFont"><b><a href="../symbols/links.Timeline.html#getVisibleChartRange">getVisibleChartRange</a></b>()
 								</div>
 								<div class="description">Retrieve the current visible range in the timeline.</div>
+							</td>
+						</tr>
+					
+						<tr>
+							<td class="attributes">&nbsp;</td>
+							<td class="nameDescription">
+								<div class="fixedFont"><b><a href="../symbols/links.Timeline.html#getVisibleItems">getVisibleItems</a></b>(start, end)
+								</div>
+								<div class="description">Find all elements within the start and end range
+If no element is found, returns an empty array</div>
+							</td>
+						</tr>
+					
+						<tr>
+							<td class="attributes">&nbsp;</td>
+							<td class="nameDescription">
+								<div class="fixedFont"><b><a href="../symbols/links.Timeline.html#initialItemsPosition">initialItemsPosition</a></b>(items, groupBase)
+								</div>
+								<div class="description"></div>
 							</td>
 						</tr>
 					
@@ -822,7 +898,7 @@ Reloads the (linked) data table and redraws the timeline when resized.</div>
 							<td class="nameDescription">
 								<div class="fixedFont">links.Timeline.<b><a href="../symbols/links.Timeline.html#.removeClassName">removeClassName</a></b>(elem, className)
 								</div>
-								<div class="description">add a className to the given elements style</div>
+								<div class="description">Removes one or more className's from the given elements style</div>
 							</td>
 						</tr>
 					
@@ -1016,6 +1092,15 @@ if there is no item selected, the button is hidden.</div>
 								<div class="description">Convert a position on screen (pixels) to a datetime
 Before this method can be used, the method calcConversionFactor must be
 executed once.</div>
+							</td>
+						</tr>
+					
+						<tr>
+							<td class="attributes">&nbsp;</td>
+							<td class="nameDescription">
+								<div class="fixedFont"><b><a href="../symbols/links.Timeline.html#selectCluster">selectCluster</a></b>(index)
+								</div>
+								<div class="description">Select an cluster by its index</div>
 							</td>
 						</tr>
 					
@@ -1266,7 +1351,7 @@ executed once.</div>
 				</div>
 				
 				<div class="fixedFont">
-						<b>links.Timeline</b>(container)
+						<b>links.Timeline</b>(container, options)
 				</div>
 				
 				<div class="description">
@@ -1286,7 +1371,14 @@ executed once.</div>
 								
 							</dt>
 								<dd>The DOM element in which the Timeline will
-                                 be created. Normally a div element.</dd>
+                             be created. Normally a div element.</dd>
+						
+							<dt>
+								<span class="light fixedFont">{Object}</span>  <b>options</b>
+								
+							</dt>
+								<dd>A name/value map containing settings for the
+                             timeline. Optional.</dd>
 						
 						</dl>
 					
@@ -1317,7 +1409,7 @@ executed once.</div>
 					
 					</div>
 					<div class="description">
-						add a className to the given elements style
+						Adds one or more className's to the given elements style
 						
 						
 					</div>
@@ -1433,7 +1525,10 @@ executed once.</div>
                              {Date} start (required),
                              {Date} end (optional),
                              {String} content (required),
-                             {String} group (optional)</dd>
+                             {String} group (optional)
+                             {String} className (optional)
+                             {Boolean} editable (optional)
+                             {String} type (optional)</dd>
 							
 								<dt>
 									<span class="light fixedFont">{boolean}</span> <b>preventRender</b>
@@ -1480,7 +1575,10 @@ executed once.</div>
                            {Date} start,
                            {Date} end,
                            {String} content with text or HTML code,
-                           {String} group</dd>
+                           {String} group (optional)
+                           {String} className (optional)
+                           {String} editable (optional)
+                           {String} type (optional)</dd>
 							
 								<dt>
 									<span class="light fixedFont">{boolean}</span> <b>preventRender</b>
@@ -1770,6 +1868,49 @@ the created clusters.
 						
 						
 						
+						
+						
+						
+
+					<hr />
+				
+					<a name=".clone"> </a>
+					<div class="fixedFont">&lt;static&gt; 
+					
+					<span class="light">{Object}</span>
+					<span class="light">links.Timeline.</span><b>clone</b>(object)
+					
+					</div>
+					<div class="description">
+						Shallow clone an object
+						
+						
+					</div>
+					
+					
+					
+						
+							<dl class="detailList">
+							<dt class="heading">Parameters:</dt>
+							
+								<dt>
+									<span class="light fixedFont">{Object}</span> <b>object</b>
+									
+								</dt>
+								<dd></dd>
+							
+							</dl>
+						
+						
+						
+						
+						
+							<dl class="detailList">
+							<dt class="heading">Returns:</dt>
+							
+								<dd><span class="light fixedFont">{Object}</span> clone</dd>
+							
+							</dl>
 						
 						
 						
@@ -2071,7 +2212,9 @@ A data table with the events must be provided, and an options table.
 									
 								</dt>
 								<dd>A name/value map containing settings for the
-                                timeline. Optional.</dd>
+                                timeline. Optional. The use of options here
+                                is deprecated. Pass timeline options in the
+                                constructor or use setOptions()</dd>
 							
 							</dl>
 						
@@ -2099,6 +2242,54 @@ A data table with the events must be provided, and an options table.
 					
 					
 					
+						
+						
+						
+						
+						
+						
+						
+
+					<hr />
+				
+					<a name="finalItemsPosition"> </a>
+					<div class="fixedFont">
+					
+					
+					<b>finalItemsPosition</b>(items, groupBase, group)
+					
+					</div>
+					<div class="description">
+						
+						
+						
+					</div>
+					
+					
+					
+						
+							<dl class="detailList">
+							<dt class="heading">Parameters:</dt>
+							
+								<dt>
+									<b>items</b>
+									
+								</dt>
+								<dd></dd>
+							
+								<dt>
+									<b>groupBase</b>
+									
+								</dt>
+								<dd></dd>
+							
+								<dt>
+									<b>group</b>
+									
+								</dt>
+								<dd></dd>
+							
+							</dl>
 						
 						
 						
@@ -2189,6 +2380,96 @@ A data table with the events must be provided, and an options table.
 							
 								<dd><span class="light fixedFont">{number}</span> top        The absolute top position of this element
                              in the browser page.</dd>
+							
+							</dl>
+						
+						
+						
+
+					<hr />
+				
+					<a name="getCluster"> </a>
+					<div class="fixedFont">
+					
+					<span class="light">{Object}</span>
+					<b>getCluster</b>(index)
+					
+					</div>
+					<div class="description">
+						Retrieve the properties of a cluster.
+						
+						
+					</div>
+					
+					
+					
+						
+							<dl class="detailList">
+							<dt class="heading">Parameters:</dt>
+							
+								<dt>
+									<span class="light fixedFont">{Number}</span> <b>index</b>
+									
+								</dt>
+								<dd></dd>
+							
+							</dl>
+						
+						
+						
+						
+						
+							<dl class="detailList">
+							<dt class="heading">Returns:</dt>
+							
+								<dd><span class="light fixedFont">{Object}</span> clusterdata    Object containing cluster properties:<br>
+                             {Date} start (required),
+                             {String} type (optional)
+                             {Array} array with item data as is in getItem()</dd>
+							
+							</dl>
+						
+						
+						
+
+					<hr />
+				
+					<a name="getClusterIndex"> </a>
+					<div class="fixedFont">
+					
+					<span class="light">{Number | undefined}</span>
+					<b>getClusterIndex</b>(element)
+					
+					</div>
+					<div class="description">
+						Find the cluster index from a given HTML element
+If no cluster index is found, undefined is returned
+						
+						
+					</div>
+					
+					
+					
+						
+							<dl class="detailList">
+							<dt class="heading">Parameters:</dt>
+							
+								<dt>
+									<span class="light fixedFont">{Element}</span> <b>element</b>
+									
+								</dt>
+								<dd></dd>
+							
+							</dl>
+						
+						
+						
+						
+						
+							<dl class="detailList">
+							<dt class="heading">Returns:</dt>
+							
+								<dd><span class="light fixedFont">{Number | undefined}</span> index</dd>
 							
 							</dl>
 						
@@ -2508,11 +2789,14 @@ it will be created.
 							<dl class="detailList">
 							<dt class="heading">Returns:</dt>
 							
-								<dd><span class="light fixedFont">{Object}</span> properties   Object containing item properties:<br>
+								<dd><span class="light fixedFont">{Object}</span> itemData    Object containing item properties:<br>
                              {Date} start (required),
                              {Date} end (optional),
                              {String} content (required),
-                             {String} group (optional)</dd>
+                             {String} group (optional),
+                             {String} className (optional)
+                             {boolean} editable (optional)
+                             {String} type (optional)</dd>
 							
 							</dl>
 						
@@ -2557,6 +2841,74 @@ If no item index is found, undefined is returned
 							<dt class="heading">Returns:</dt>
 							
 								<dd><span class="light fixedFont">{Number | undefined}</span> index</dd>
+							
+							</dl>
+						
+						
+						
+
+					<hr />
+				
+					<a name="getItemsByGroup"> </a>
+					<div class="fixedFont">
+					
+					
+					<b>getItemsByGroup</b>(items)
+					
+					</div>
+					<div class="description">
+						
+						
+						
+					</div>
+					
+					
+					
+						
+							<dl class="detailList">
+							<dt class="heading">Parameters:</dt>
+							
+								<dt>
+									<b>items</b>
+									
+								</dt>
+								<dd></dd>
+							
+							</dl>
+						
+						
+						
+						
+						
+						
+						
+
+					<hr />
+				
+					<a name="getOptions"> </a>
+					<div class="fixedFont">
+					
+					
+					<b>getOptions</b>()
+					
+					</div>
+					<div class="description">
+						Get options for the timeline.
+						
+						
+					</div>
+					
+					
+					
+						
+						
+						
+						
+						
+							<dl class="detailList">
+							<dt class="heading">Returns:</dt>
+							
+								<dd>the options object</dd>
 							
 							</dl>
 						
@@ -2760,6 +3112,98 @@ If no item index is found, undefined is returned
 
 					<hr />
 				
+					<a name="getVisibleItems"> </a>
+					<div class="fixedFont">
+					
+					
+					<b>getVisibleItems</b>(start, end)
+					
+					</div>
+					<div class="description">
+						Find all elements within the start and end range
+If no element is found, returns an empty array
+						
+						
+					</div>
+					
+					
+					
+						
+							<dl class="detailList">
+							<dt class="heading">Parameters:</dt>
+							
+								<dt>
+									<b>start</b>
+									
+								</dt>
+								<dd>time</dd>
+							
+								<dt>
+									<b>end</b>
+									
+								</dt>
+								<dd>time</dd>
+							
+							</dl>
+						
+						
+						
+						
+						
+							<dl class="detailList">
+							<dt class="heading">Returns:</dt>
+							
+								<dd>Array itemsInRange</dd>
+							
+							</dl>
+						
+						
+						
+
+					<hr />
+				
+					<a name="initialItemsPosition"> </a>
+					<div class="fixedFont">
+					
+					
+					<b>initialItemsPosition</b>(items, groupBase)
+					
+					</div>
+					<div class="description">
+						
+						
+						
+					</div>
+					
+					
+					
+						
+							<dl class="detailList">
+							<dt class="heading">Parameters:</dt>
+							
+								<dt>
+									<b>items</b>
+									
+								</dt>
+								<dd></dd>
+							
+								<dt>
+									<b>groupBase</b>
+									
+								</dt>
+								<dd></dd>
+							
+							</dl>
+						
+						
+						
+						
+						
+						
+						
+
+					<hr />
+				
 					<a name=".isArray"> </a>
 					<div class="fixedFont">&lt;static&gt; 
 					
@@ -2905,6 +3349,8 @@ For example, the method returns the map
         content: 2,
         group: undefined,
         className: undefined
+        editable: undefined
+        type: undefined
     }
 						
 						
@@ -3576,7 +4022,7 @@ See also the method checkResize
 					
 					</div>
 					<div class="description">
-						add a className to the given elements style
+						Removes one or more className's from the given elements style
 						
 						
 					</div>
@@ -4295,6 +4741,42 @@ executed once.
 								<dd><span class="light fixedFont">{Date}</span> time The datetime the corresponds with given position x</dd>
 							
 							</dl>
+						
+						
+						
+
+					<hr />
+				
+					<a name="selectCluster"> </a>
+					<div class="fixedFont">
+					
+					
+					<b>selectCluster</b>(index)
+					
+					</div>
+					<div class="description">
+						Select an cluster by its index
+						
+						
+					</div>
+					
+					
+					
+						
+							<dl class="detailList">
+							<dt class="heading">Parameters:</dt>
+							
+								<dt>
+									<span class="light fixedFont">{Number}</span> <b>index</b>
+									
+								</dt>
+								<dd></dd>
+							
+							</dl>
+						
+						
+						
+						
 						
 						
 						
@@ -5324,7 +5806,7 @@ For example, try zoomfactor = 0.1 or -0.1
 <!-- ============================== footer ================================= -->
 		<div class="fineprint" style="clear:both">
 			
-			Documentation generated by <a href="http://code.google.com/p/jsdoc-toolkit/" target="_blank">JsDoc Toolkit</a> 2.3.2 on Mon Mar 04 2013 13:55:41 GMT+0100 (CET)
+			Documentation generated by <a href="http://code.google.com/p/jsdoc-toolkit/" target="_blank">JsDoc Toolkit</a> 2.3.2 on Mon Jul 28 2014 17:02:16 GMT+0200 (CEST)
 		</div>
 	</body>
 </html>

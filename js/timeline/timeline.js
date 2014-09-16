@@ -27,18 +27,23 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  *
- * Copyright (c) 2011-2012 Almende B.V.
+ * Copyright (c) 2011-2014 Almende B.V.
  *
- * @author 	Jos de Jong, <jos@almende.org>
- * @date    2013-03-04
- * @version 2.4.1
+ * @author  Jos de Jong, <jos@almende.org>
+ * @date    2014-07-28
+ * @version 2.9.0
+ */
+
+/*
+ * i18n mods by github user iktuz (https://gist.github.com/iktuz/3749287/)
+ * added to v2.4.1 with da_DK language by @bjarkebech
  */
 
 /*
  * TODO
  *
  * Add zooming with pinching on Android
- * 
+ *
  * Bug: when an item contains a javascript onclick or a link, this does not work
  *      when the item is not selected (when the item is being selected,
  *      it is redrawn, which cancels any onclick or link action)
@@ -55,8 +60,8 @@
  */
 if (typeof links === 'undefined') {
     links = {};
-    // important: do not use var, as "var links = {};" will overwrite 
-    //            the existing links variable value with undefined in IE8, IE7.  
+    // important: do not use var, as "var links = {};" will overwrite
+    //            the existing links variable value with undefined in IE8, IE7.
 }
 
 
@@ -65,7 +70,7 @@ if (typeof links === 'undefined') {
  */
 if (typeof google === 'undefined') {
     google = undefined;
-    // important: do not use var, as "var google = undefined;" will overwrite 
+    // important: do not use var, as "var google = undefined;" will overwrite
     //            the existing google variable value with undefined in IE8, IE7.
 }
 
@@ -104,9 +109,11 @@ if (!Array.prototype.forEach) {
  * The timeline is developed in javascript as a Google Visualization Chart.
  *
  * @param {Element} container   The DOM element in which the Timeline will
- *                                  be created. Normally a div element.
+ *                              be created. Normally a div element.
+ * @param {Object} options      A name/value map containing settings for the
+ *                              timeline. Optional.
  */
-links.Timeline = function(container) {
+links.Timeline = function(container, options) {
     if (!container) {
         // this call was probably only for inheritance, no constructor-code is required
         return;
@@ -131,7 +138,7 @@ links.Timeline = function(container) {
 
     this.listeners = {}; // event listener callbacks
 
-    // Initialize sizes. 
+    // Initialize sizes.
     // Needed for IE (which gives an error when you try to set an undefined
     // value in a style)
     this.size = {
@@ -165,10 +172,14 @@ links.Timeline = function(container) {
 
     this.dom.container = container;
 
+    //
+    // Let's set the default options first
+    //
     this.options = {
         'width': "100%",
         'height': "auto",
         'minHeight': 0,        // minimal height in pixels
+        'groupMinHeight': 0,
         'autoHeight': true,
 
         'eventMargin': 10,     // minimal margin between events
@@ -177,31 +188,53 @@ links.Timeline = function(container) {
 
         'min': undefined,
         'max': undefined,
-        'intervalMin': 10,     // milliseconds
-        'intervalMax': 1000 * 60 * 60 * 24 * 365 * 10000, // milliseconds
+        'zoomMin': 10,     // milliseconds
+        'zoomMax': 1000 * 60 * 60 * 24 * 365 * 10000, // milliseconds
 
         'moveable': true,
         'zoomable': true,
         'selectable': true,
+        'unselectable': true,
         'editable': false,
         'snapEvents': true,
         'groupChangeable': true,
+        'timeChangeable': true,
 
         'showCurrentTime': true, // show a red bar displaying the current time
-        'showCustomTime': false, // show a blue, draggable bar displaying a custom time    
+        'showCustomTime': false, // show a blue, draggable bar displaying a custom time
         'showMajorLabels': true,
         'showMinorLabels': true,
         'showNavigation': false,
         'showButtonNew': false,
         'groupsOnRight': false,
+        'groupsOrder' : true,
         'axisOnTop': false,
         'stackEvents': true,
         'animate': true,
         'animateZoom': true,
         'cluster': false,
+        'clusterMaxItems': 5,
         'style': 'box',
-        'customStackOrder': false //a function(a,b) for determining stackorder amongst a group of items. Essentially a comparator, -ve value for "a before b" and vice versa
+        'customStackOrder': false, //a function(a,b) for determining stackorder amongst a group of items. Essentially a comparator, -ve value for "a before b" and vice versa
+        
+        // i18n: Timeline only has built-in English text per default. Include timeline-locales.js to support more localized text.
+        'locale': 'en',
+        'MONTHS': ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
+        'MONTHS_SHORT': ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+        'DAYS': ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+        'DAYS_SHORT': ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+        'ZOOM_IN': "Zoom in",
+        'ZOOM_OUT': "Zoom out",
+        'MOVE_LEFT': "Move left",
+        'MOVE_RIGHT': "Move right",
+        'NEW': "New",
+        'CREATE_NEW_EVENT': "Create new event"
     };
+    
+    //
+    // Now we can set the givenproperties
+    //
+    this.setOptions(options);
 
     this.clientTimeOffset = 0;    // difference between client time and the time
     // set via Timeline.setCurrentTime()
@@ -217,16 +250,17 @@ links.Timeline = function(container) {
 
     // add standard item types
     this.itemTypes = {
-        box:   links.Timeline.ItemBox,
-        range: links.Timeline.ItemRange,
-        dot:   links.Timeline.ItemDot
+        box:           links.Timeline.ItemBox,
+        range:         links.Timeline.ItemRange,
+        floatingRange: links.Timeline.ItemFloatingRange,
+        dot:           links.Timeline.ItemDot
     };
 
     // initialize data
     this.data = [];
     this.firstDraw = true;
 
-    // date interval must be initialized 
+    // date interval must be initialized
     this.setVisibleChartRange(undefined, undefined, false);
 
     // render for the first time
@@ -251,10 +285,19 @@ links.Timeline = function(container) {
  *                                 Object DataTable is defined in
  *                                 google.visualization.DataTable
  * @param {Object} options         A name/value map containing settings for the
- *                                 timeline. Optional.
+ *                                 timeline. Optional. The use of options here
+ *                                 is deprecated. Pass timeline options in the
+ *                                 constructor or use setOptions()
  */
 links.Timeline.prototype.draw = function(data, options) {
+    if (options) {
+        console.log("WARNING: Passing options in draw() is deprecated. Pass options to the constructur or use setOptions() instead!");
+    }
     this.setOptions(options);
+
+    if (this.options.selectable) {
+        links.Timeline.addClassName(this.dom.frame, "timeline-selectable");
+    }
 
     // read the data
     this.setData(data);
@@ -286,10 +329,30 @@ links.Timeline.prototype.setOptions = function(options) {
             }
         }
 
+        // prepare i18n dependent on set locale
+        if (typeof links.locales !== 'undefined' && this.options.locale !== 'en') {
+            var localeOpts = links.locales[this.options.locale];
+            if(localeOpts) {
+                for (var l in localeOpts) {
+                    if (localeOpts.hasOwnProperty(l)) {
+                        this.options[l] = localeOpts[l];
+                    }
+                }
+            }
+        }
+
         // check for deprecated options
         if (options.showButtonAdd != undefined) {
             this.options.showButtonNew = options.showButtonAdd;
             console.log('WARNING: Option showButtonAdd is deprecated. Use showButtonNew instead');
+        }
+        if (options.intervalMin != undefined) {
+            this.options.zoomMin = options.intervalMin;
+            console.log('WARNING: Option intervalMin is deprecated. Use zoomMin instead');
+        }
+        if (options.intervalMax != undefined) {
+            this.options.zoomMax = options.intervalMax;
+            console.log('WARNING: Option intervalMax is deprecated. Use zoomMax instead');
         }
 
         if (options.scale && options.step) {
@@ -299,6 +362,15 @@ links.Timeline.prototype.setOptions = function(options) {
 
     // validate options
     this.options.autoHeight = (this.options.height === "auto");
+};
+
+/**
+ * Get options for the timeline.
+ *
+ * @return the options object
+ */
+links.Timeline.prototype.getOptions = function() {
+    return this.options;
 };
 
 /**
@@ -319,31 +391,37 @@ links.Timeline.prototype.addItemType = function (typeName, typeFactory) {
  *         content: 2,
  *         group: undefined,
  *         className: undefined
+ *         editable: undefined
+ *         type: undefined
  *     }
  * @param {google.visualization.DataTable} dataTable
  * @type {Object} map
  */
 links.Timeline.mapColumnIds = function (dataTable) {
     var cols = {},
-        colMax = dataTable.getNumberOfColumns(),
+        colCount = dataTable.getNumberOfColumns(),
         allUndefined = true;
 
     // loop over the columns, and map the column id's to the column indexes
-    for (var col = 0; col < colMax; col++) {
+    for (var col = 0; col < colCount; col++) {
         var id = dataTable.getColumnId(col) || dataTable.getColumnLabel(col);
         cols[id] = col;
-        if (id == 'start' || id == 'end' || id == 'content' ||
-            id == 'group' || id == 'className' || id == 'editable') {
+        if (id == 'start' || id == 'end' || id == 'content' || id == 'group' ||
+            id == 'className' || id == 'editable' || id == 'type') {
             allUndefined = false;
         }
     }
 
-    // if no labels or ids are defined,
-    // use the default mapping for start, end, content
+    // if no labels or ids are defined, use the default mapping
+    // for start, end, content, group, className, editable, type
     if (allUndefined) {
         cols.start = 0;
         cols.end = 1;
         cols.content = 2;
+        if (colCount > 3) {cols.group = 3}
+        if (colCount > 4) {cols.className = 4}
+        if (colCount > 5) {cols.editable = 5}
+        if (colCount > 6) {cols.type = 6}
     }
 
     return cols;
@@ -381,7 +459,8 @@ links.Timeline.prototype.setData = function(data) {
                 'content':   ((cols.content != undefined)   ? data.getValue(row, cols.content)   : undefined),
                 'group':     ((cols.group != undefined)     ? data.getValue(row, cols.group)     : undefined),
                 'className': ((cols.className != undefined) ? data.getValue(row, cols.className) : undefined),
-                'editable':  ((cols.editable != undefined)  ? data.getValue(row, cols.editable)  : undefined)
+                'editable':  ((cols.editable != undefined)  ? data.getValue(row, cols.editable)  : undefined),
+                'type':      ((cols.type != undefined)      ? data.getValue(row, cols.type)      : undefined)
             }));
         }
     }
@@ -513,6 +592,79 @@ links.Timeline.prototype.getItemIndex = function(element) {
 
     return index;
 };
+
+
+/**
+ * Find the cluster index from a given HTML element
+ * If no cluster index is found, undefined is returned
+ * @param {Element} element
+ * @return {Number | undefined} index
+ */
+links.Timeline.prototype.getClusterIndex = function(element) {
+    var e = element,
+        dom = this.dom,
+        frame = dom.items.frame,
+        clusters = this.clusters,
+        index = undefined;
+
+    if (this.clusters) {
+        // try to find the frame where the clusters are located in
+        while (e.parentNode && e.parentNode !== frame) {
+            e = e.parentNode;
+        }
+
+        if (e.parentNode === frame) {
+            // yes! we have found the parent element of all clusters
+            // retrieve its id from the array with clusters
+            for (var i = 0, iMax = clusters.length; i < iMax; i++) {
+                if (clusters[i].dom === e) {
+                    index = i;
+                    break;
+                }
+            }
+        }
+    }
+
+    return index;
+};
+
+/**
+ * Find all elements within the start and end range
+ * If no element is found, returns an empty array
+ * @param start time
+ * @param end time
+ * @return Array itemsInRange
+ */
+links.Timeline.prototype.getVisibleItems = function  (start, end) {
+    var items = this.items;
+    var itemsInRange = [];
+
+    if (items) {
+        for (var i = 0, iMax = items.length; i < iMax; i++) {
+            var item = items[i];
+            if (item.end) {
+                // Time range object // NH use getLeft and getRight here
+                if (start <= item.start && item.end <= end) {
+                    itemsInRange.push({"row": i});
+                }
+            } else {
+                // Point object
+                if (start <= item.start && item.start <= end) {
+                    itemsInRange.push({"row": i});
+                }
+            }
+        }
+    }
+
+    //     var sel = [];
+    // if (this.selection) {
+    //     sel.push({"row": this.selection.index});
+    // }
+    // return sel;
+
+    return itemsInRange;
+};
+
 
 /**
  * Set a new size for the timeline
@@ -675,18 +827,12 @@ links.Timeline.prototype.getDataRange = function (withMargin) {
                 start = item.start != undefined ? item.start.valueOf() : undefined,
                 end   = item.end != undefined   ? item.end.valueOf() : start;
 
-            if (min != undefined && start != undefined) {
-                min = Math.min(min.valueOf(), start.valueOf());
-            }
-            else {
-                min = start;
+            if (start != undefined) {
+                min = (min != undefined) ? Math.min(min.valueOf(), start.valueOf()) : start;
             }
 
-            if (max != undefined && end != undefined) {
-                max = Math.max(max, end);
-            }
-            else {
-                max = end;
+            if (end != undefined) {
+                max = (max != undefined) ? Math.max(max.valueOf(), end.valueOf()) : end;
             }
         }
     }
@@ -732,7 +878,6 @@ links.Timeline.prototype.render = function(options) {
     this.clusterItems();
     this.filterItems();
     this.stackItems(animate);
-
     this.recalcItems();
 
     // TODO: only repaint when resized or when filterItems or stackItems gave a change?
@@ -806,9 +951,7 @@ links.Timeline.prototype.repaintFrame = function() {
     // main frame
     if (!dom.frame) {
         dom.frame = document.createElement("DIV");
-        dom.frame.className = "timeline-frame";
-        dom.frame.style.position = "relative";
-        dom.frame.style.overflow = "hidden";
+        dom.frame.className = "timeline-frame ui-widget ui-widget-content ui-corner-all";
         dom.container.appendChild(dom.frame);
         needsReflow = true;
     }
@@ -826,8 +969,7 @@ links.Timeline.prototype.repaintFrame = function() {
     if (!dom.content) {
         // create content box where the axis and items will be created
         dom.content = document.createElement("DIV");
-        dom.content.style.position = "relative";
-        dom.content.style.overflow = "hidden";
+        dom.content.className = "timeline-content";
         dom.frame.appendChild(dom.content);
 
         var timelines = document.createElement("DIV");
@@ -1015,7 +1157,7 @@ links.Timeline.prototype.repaintAxis = function() {
             isMajor = step.isMajor();
 
         if (options.showMinorLabels) {
-            this.repaintAxisMinorText(x, step.getLabelMinor());
+            this.repaintAxisMinorText(x, step.getLabelMinor(options));
         }
 
         if (isMajor && options.showMajorLabels) {
@@ -1023,7 +1165,7 @@ links.Timeline.prototype.repaintAxis = function() {
                 if (xFirstMajorLabel == undefined) {
                     xFirstMajorLabel = x;
                 }
-                this.repaintAxisMajorText(x, step.getLabelMajor());
+                this.repaintAxisMajorText(x, step.getLabelMajor(options));
             }
             this.repaintAxisMajorLine(x);
         }
@@ -1037,7 +1179,7 @@ links.Timeline.prototype.repaintAxis = function() {
     // create a major label on the left when needed
     if (options.showMajorLabels) {
         var leftTime = this.screenToTime(0),
-            leftText = this.step.getLabelMajor(leftTime),
+            leftText = this.step.getLabelMajor(options, leftTime),
             width = leftText.length * size.axis.characterMajorWidth + 10; // upper bound estimation
 
         if (xFirstMajorLabel == undefined || width < xFirstMajorLabel) {
@@ -1407,9 +1549,9 @@ links.Timeline.prototype.reflowItems = function() {
         }
 
         if (group) {
-            group.itemsHeight = group.itemsHeight ?
+            group.itemsHeight = Math.max(this.options.groupMinHeight,group.itemsHeight ?
                 Math.max(group.itemsHeight, item.height) :
-                item.height;
+                item.height);
         }
     }
 
@@ -1503,9 +1645,12 @@ links.Timeline.prototype.recalcItems = function () {
         for (i = 0, iMax = groups.length; i < iMax; i++) {
             group = groups[i];
 
-            var groupHeight = Math.max(group.labelHeight || 0, group.itemsHeight || 0);
+            //
+            // TODO: Do we want to apply a max height? how ?
+            //
+            var groupHeight = group.itemsHeight;
             resized = resized || (groupHeight != group.height);
-            group.height = groupHeight;
+            group.height = Math.max(groupHeight, options.groupMinHeight);
 
             actualHeight += groups[i].height + options.eventMargin;
         }
@@ -1530,16 +1675,6 @@ links.Timeline.prototype.recalcItems = function () {
                 group.top = top;
                 group.labelTop = top + (group.height - group.labelHeight) / 2;
                 group.lineTop = top - eventMargin/2;
-            }
-        }
-
-        // calculate top position of the visible items
-        for (i = 0, iMax = renderedItems.length; i < iMax; i++) {
-            item = renderedItems[i];
-            group = item.group;
-
-            if (group) {
-                item.top = group.top;
             }
         }
 
@@ -1712,6 +1847,7 @@ links.Timeline.prototype.reflowGroups = function() {
  */
 links.Timeline.prototype.repaintGroups = function() {
     var dom = this.dom,
+        timeline = this,
         options = this.options,
         size = this.size,
         groups = this.groups;
@@ -1829,9 +1965,7 @@ links.Timeline.prototype.repaintGroups = function() {
     labelLines.splice(needed, current - needed);
     itemLines.splice(needed, current - needed);
 
-    frame.style.borderStyle = options.groupsOnRight ?
-        "none none none solid" :
-        "none solid none none";
+    links.Timeline.addClassName(frame, options.groupsOnRight ? 'timeline-groups-axis-onright' : 'timeline-groups-axis-onleft');
 
     // position the groups
     for (var i = 0, iMax = groups.length; i < iMax; i++) {
@@ -2013,8 +2147,8 @@ links.Timeline.prototype.repaintDeleteButton = function () {
         dom.items.deleteButton = deleteButton;
     }
 
-    var index = this.selection ? this.selection.index : -1,
-        item = this.selection ? this.items[index] : undefined;
+    var index = (this.selection && this.selection.index !== undefined) ? this.selection.index : -1,
+        item = (this.selection && this.selection.index !== undefined) ? this.items[index] : undefined;
     if (item && item.rendered && this.isEditable(item)) {
         var right = item.getRight(this),
             top = item.top;
@@ -2064,12 +2198,12 @@ links.Timeline.prototype.repaintDragAreas = function () {
     }
 
     // reposition left and right drag area
-    var index = this.selection ? this.selection.index : -1,
-        item = this.selection ? this.items[index] : undefined;
+    var index = (this.selection && this.selection.index !== undefined) ? this.selection.index : -1,
+        item = (this.selection && this.selection.index !== undefined) ? this.items[index] : undefined;
     if (item && item.rendered && this.isEditable(item) &&
-        (item instanceof links.Timeline.ItemRange)) {
-        var left = this.timeToScreen(item.start),
-            right = this.timeToScreen(item.end),
+        (item instanceof links.Timeline.ItemRange || item instanceof links.Timeline.ItemFloatingRange)) {
+        var left = item.getLeft(this), // NH change to getLeft
+            right = item.getRight(this), // NH change to getRight
             top = item.top,
             height = item.height;
 
@@ -2106,11 +2240,13 @@ links.Timeline.prototype.repaintNavigation = function () {
         navBar = dom.navBar;
 
     if (!navBar) {
-        if (options.showNavigation || options.showButtonNew) {
+        var showButtonNew = options.showButtonNew && options.editable;
+        var showNavigation = options.showNavigation && (options.zoomable || options.moveable);
+        if (showNavigation || showButtonNew) {
             // create a navigation bar containing the navigation buttons
             navBar = document.createElement("DIV");
             navBar.style.position = "absolute";
-            navBar.className = "timeline-navigation";
+            navBar.className = "timeline-navigation ui-widget ui-state-highlight ui-corner-all";
             if (options.groupsOnRight) {
                 navBar.style.left = '10px';
             }
@@ -2127,12 +2263,15 @@ links.Timeline.prototype.repaintNavigation = function () {
             frame.appendChild(navBar);
         }
 
-        if (options.editable && options.showButtonNew) {
+        if (showButtonNew) {
             // create a new in button
             navBar.addButton = document.createElement("DIV");
             navBar.addButton.className = "timeline-navigation-new";
+            navBar.addButton.title = options.CREATE_NEW_EVENT;
+            var addIconSpan = document.createElement("SPAN");
+            addIconSpan.className = "ui-icon ui-icon-circle-plus";
+            navBar.addButton.appendChild(addIconSpan);
 
-            navBar.addButton.title = "Create new event";
             var onAdd = function(event) {
                 links.Timeline.preventDefault(event);
                 links.Timeline.stopPropagation(event);
@@ -2140,19 +2279,16 @@ links.Timeline.prototype.repaintNavigation = function () {
                 // create a new event at the center of the frame
                 var w = timeline.size.contentWidth;
                 var x = w / 2;
-                var xstart = timeline.screenToTime(x - w / 10); // subtract 10% of timeline width
-                var xend = timeline.screenToTime(x + w / 10);   // add 10% of timeline width
+                var xstart = timeline.screenToTime(x);
                 if (options.snapEvents) {
                     timeline.step.snap(xstart);
-                    timeline.step.snap(xend);
                 }
 
-                var content = "New";
+                var content = options.NEW;
                 var group = timeline.groups.length ? timeline.groups[0].content : undefined;
                 var preventRender = true;
                 timeline.addItem({
                     'start': xstart,
-                    'end': xend,
                     'content': content,
                     'group': group
                 }, preventRender);
@@ -2180,68 +2316,87 @@ links.Timeline.prototype.repaintNavigation = function () {
             navBar.appendChild(navBar.addButton);
         }
 
-        if (options.editable && options.showButtonNew && options.showNavigation) {
+        if (showButtonNew && showNavigation) {
             // create a separator line
-            navBar.addButton.style.borderRightWidth = "1px";
-            navBar.addButton.style.borderRightStyle = "solid";
+            links.Timeline.addClassName(navBar.addButton, 'timeline-navigation-new-line');
         }
 
-        if (options.showNavigation) {
-            // create a zoom in button
-            navBar.zoomInButton = document.createElement("DIV");
-            navBar.zoomInButton.className = "timeline-navigation-zoom-in";
-            navBar.zoomInButton.title = "Zoom in";
-            var onZoomIn = function(event) {
-                links.Timeline.preventDefault(event);
-                links.Timeline.stopPropagation(event);
-                timeline.zoom(0.4);
-                timeline.trigger("rangechange");
-                timeline.trigger("rangechanged");
-            };
-            links.Timeline.addEventListener(navBar.zoomInButton, "mousedown", onZoomIn);
-            navBar.appendChild(navBar.zoomInButton);
+        if (showNavigation) {
+            if (options.zoomable) {
+                // create a zoom in button
+                navBar.zoomInButton = document.createElement("DIV");
+                navBar.zoomInButton.className = "timeline-navigation-zoom-in";
+                navBar.zoomInButton.title = this.options.ZOOM_IN;
+                var ziIconSpan = document.createElement("SPAN");
+                ziIconSpan.className = "ui-icon ui-icon-circle-zoomin";
+                navBar.zoomInButton.appendChild(ziIconSpan);
 
-            // create a zoom out button
-            navBar.zoomOutButton = document.createElement("DIV");
-            navBar.zoomOutButton.className = "timeline-navigation-zoom-out";
-            navBar.zoomOutButton.title = "Zoom out";
-            var onZoomOut = function(event) {
-                links.Timeline.preventDefault(event);
-                links.Timeline.stopPropagation(event);
-                timeline.zoom(-0.4);
-                timeline.trigger("rangechange");
-                timeline.trigger("rangechanged");
-            };
-            links.Timeline.addEventListener(navBar.zoomOutButton, "mousedown", onZoomOut);
-            navBar.appendChild(navBar.zoomOutButton);
+                var onZoomIn = function(event) {
+                    links.Timeline.preventDefault(event);
+                    links.Timeline.stopPropagation(event);
+                    timeline.zoom(0.4);
+                    timeline.trigger("rangechange");
+                    timeline.trigger("rangechanged");
+                };
+                links.Timeline.addEventListener(navBar.zoomInButton, "mousedown", onZoomIn);
+                navBar.appendChild(navBar.zoomInButton);
 
-            // create a move left button
-            navBar.moveLeftButton = document.createElement("DIV");
-            navBar.moveLeftButton.className = "timeline-navigation-move-left";
-            navBar.moveLeftButton.title = "Move left";
-            var onMoveLeft = function(event) {
-                links.Timeline.preventDefault(event);
-                links.Timeline.stopPropagation(event);
-                timeline.move(-0.2);
-                timeline.trigger("rangechange");
-                timeline.trigger("rangechanged");
-            };
-            links.Timeline.addEventListener(navBar.moveLeftButton, "mousedown", onMoveLeft);
-            navBar.appendChild(navBar.moveLeftButton);
+                // create a zoom out button
+                navBar.zoomOutButton = document.createElement("DIV");
+                navBar.zoomOutButton.className = "timeline-navigation-zoom-out";
+                navBar.zoomOutButton.title = this.options.ZOOM_OUT;
+                var zoIconSpan = document.createElement("SPAN");
+                zoIconSpan.className = "ui-icon ui-icon-circle-zoomout";
+                navBar.zoomOutButton.appendChild(zoIconSpan);
 
-            // create a move right button
-            navBar.moveRightButton = document.createElement("DIV");
-            navBar.moveRightButton.className = "timeline-navigation-move-right";
-            navBar.moveRightButton.title = "Move right";
-            var onMoveRight = function(event) {
-                links.Timeline.preventDefault(event);
-                links.Timeline.stopPropagation(event);
-                timeline.move(0.2);
-                timeline.trigger("rangechange");
-                timeline.trigger("rangechanged");
-            };
-            links.Timeline.addEventListener(navBar.moveRightButton, "mousedown", onMoveRight);
-            navBar.appendChild(navBar.moveRightButton);
+                var onZoomOut = function(event) {
+                    links.Timeline.preventDefault(event);
+                    links.Timeline.stopPropagation(event);
+                    timeline.zoom(-0.4);
+                    timeline.trigger("rangechange");
+                    timeline.trigger("rangechanged");
+                };
+                links.Timeline.addEventListener(navBar.zoomOutButton, "mousedown", onZoomOut);
+                navBar.appendChild(navBar.zoomOutButton);
+            }
+
+            if (options.moveable) {
+                // create a move left button
+                navBar.moveLeftButton = document.createElement("DIV");
+                navBar.moveLeftButton.className = "timeline-navigation-move-left";
+                navBar.moveLeftButton.title = this.options.MOVE_LEFT;
+                var mlIconSpan = document.createElement("SPAN");
+                mlIconSpan.className = "ui-icon ui-icon-circle-arrow-w";
+                navBar.moveLeftButton.appendChild(mlIconSpan);
+
+                var onMoveLeft = function(event) {
+                    links.Timeline.preventDefault(event);
+                    links.Timeline.stopPropagation(event);
+                    timeline.move(-0.2);
+                    timeline.trigger("rangechange");
+                    timeline.trigger("rangechanged");
+                };
+                links.Timeline.addEventListener(navBar.moveLeftButton, "mousedown", onMoveLeft);
+                navBar.appendChild(navBar.moveLeftButton);
+
+                // create a move right button
+                navBar.moveRightButton = document.createElement("DIV");
+                navBar.moveRightButton.className = "timeline-navigation-move-right";
+                navBar.moveRightButton.title = this.options.MOVE_RIGHT;
+                var mrIconSpan = document.createElement("SPAN");
+                mrIconSpan.className = "ui-icon ui-icon-circle-arrow-e";
+                navBar.moveRightButton.appendChild(mrIconSpan);
+
+                var onMoveRight = function(event) {
+                    links.Timeline.preventDefault(event);
+                    links.Timeline.stopPropagation(event);
+                    timeline.move(0.2);
+                    timeline.trigger("rangechange");
+                    timeline.trigger("rangechanged");
+                };
+                links.Timeline.addEventListener(navBar.moveRightButton, "mousedown", onMoveRight);
+                navBar.appendChild(navBar.moveRightButton);
+            }
         }
     }
 };
@@ -2457,7 +2612,7 @@ links.Timeline.prototype.onTouchMove = function(event) {
     }
 
     if (!params.zoomed) {
-        // move 
+        // move
         this.onMouseMove(event);
     }
     else {
@@ -2561,10 +2716,12 @@ links.Timeline.prototype.onMouseDown = function(event) {
     params.itemDragRight = (params.target === dragRight);
 
     if (params.itemDragLeft || params.itemDragRight) {
-        params.itemIndex = this.selection ? this.selection.index : undefined;
+        params.itemIndex = (this.selection && this.selection.index !== undefined) ? this.selection.index : undefined;
+        delete params.clusterIndex;
     }
     else {
         params.itemIndex = this.getItemIndex(params.target);
+        params.clusterIndex = this.getClusterIndex(params.target);
     }
 
     params.customTime = (params.target === dom.customTime ||
@@ -2583,7 +2740,7 @@ links.Timeline.prototype.onMouseDown = function(event) {
             this.step.snap(xstart);
         }
         var xend = new Date(xstart.valueOf());
-        var content = "New";
+        var content = options.NEW;
         var group = this.getGroupFromHeight(y);
         this.addItem({
             'start': xstart,
@@ -2592,6 +2749,7 @@ links.Timeline.prototype.onMouseDown = function(event) {
             'group': this.getGroupName(group)
         });
         params.itemIndex = (this.items.length - 1);
+        delete params.clusterIndex;
         this.selectItem(params.itemIndex);
         params.itemDragRight = true;
     }
@@ -2603,8 +2761,8 @@ links.Timeline.prototype.onMouseDown = function(event) {
         params.itemStart = item.start;
         params.itemEnd = item.end;
         params.itemGroup = item.group;
-        params.itemLeft = item.start ? this.timeToScreen(item.start) : undefined;
-        params.itemRight = item.end ? this.timeToScreen(item.end) : undefined;
+        params.itemLeft = item.getLeft(this); // NH Use item.getLeft here
+        params.itemRight = item.getRight(this); // NH Use item.getRight here
     }
     else {
         this.dom.frame.style.cursor = 'move';
@@ -2674,7 +2832,7 @@ links.Timeline.prototype.onMouseMove = function (event) {
             left,
             right;
 
-        if (params.itemDragLeft) {
+        if (params.itemDragLeft && options.timeChangeable) {
             // move the start of the item
             left = params.itemLeft + diffX;
             right = params.itemRight;
@@ -2689,8 +2847,9 @@ links.Timeline.prototype.onMouseMove = function (event) {
                 left = right;
                 item.start = this.screenToTime(left);
             }
+          this.trigger('change');
         }
-        else if (params.itemDragRight) {
+        else if (params.itemDragRight && options.timeChangeable) {
             // move the end of the item
             left = params.itemLeft;
             right = params.itemRight + diffX;
@@ -2705,8 +2864,9 @@ links.Timeline.prototype.onMouseMove = function (event) {
                 right = left;
                 item.end = this.screenToTime(right);
             }
+          this.trigger('change');
         }
-        else {
+        else if (options.timeChangeable) {
             // move the item
             left = params.itemLeft + diffX;
             item.start = this.screenToTime(left);
@@ -2719,6 +2879,7 @@ links.Timeline.prototype.onMouseMove = function (event) {
                 right = left + (params.itemRight - params.itemLeft);
                 item.end = this.screenToTime(right);
             }
+            this.trigger('change');
         }
 
         item.setPosition(left, right);
@@ -2760,7 +2921,7 @@ links.Timeline.prototype.onMouseMove = function (event) {
         this.recalcConversion();
 
         // move the items by changing the left position of their frame.
-        // this is much faster than repositioning all elements individually via the 
+        // this is much faster than repositioning all elements individually via the
         // repaintFrame() function (which is done once at mouseup)
         // note that we round diffX to prevent wrong positioning on millisecond scale
         var previousLeft = params.previousLeft || 0;
@@ -2827,10 +2988,13 @@ links.Timeline.prototype.onMouseUp = function (event) {
                 'end': item.end
             });
 
-            // fire an add or change event. 
-            // Note that the change can be canceled from within an event listener if 
+            // fire an add or changed event.
+            // Note that the change can be canceled from within an event listener if
             // this listener calls the method cancelChange().
-            this.trigger(params.addItem ? 'add' : 'change');
+            this.trigger(params.addItem ? 'add' : 'changed');
+            
+            //retrieve item data again to include changes made to it in the triggered event handlers
+            item = this.items[params.itemIndex];
 
             if (params.addItem) {
                 if (this.applyAdd) {
@@ -2866,6 +3030,11 @@ links.Timeline.prototype.onMouseUp = function (event) {
                     item.group = params.itemGroup;
                     // TODO: original group should be restored too
                     item.setPosition(params.itemLeft, params.itemRight);
+
+                    this.updateData(params.itemIndex, {
+                        'start': params.itemStart,
+                        'end': params.itemEnd
+                    });
                 }
             }
 
@@ -2883,7 +3052,7 @@ links.Timeline.prototype.onMouseUp = function (event) {
 
             if (params.target === this.dom.items.deleteButton) {
                 // delete item
-                if (this.selection) {
+                if (this.selection && this.selection.index !== undefined) {
                     this.confirmDeleteItem(this.selection.index);
                 }
             }
@@ -2895,9 +3064,15 @@ links.Timeline.prototype.onMouseUp = function (event) {
                         this.trigger('select');
                     }
                 }
-                else {
-                    this.unselectItem();
+                else if(params.clusterIndex != undefined) {
+                    this.selectCluster(params.clusterIndex);
                     this.trigger('select');
+                }
+                else {
+                    if (options.unselectable) {
+                        this.unselectItem();
+                        this.trigger('select');
+                    }
                 }
             }
         }
@@ -2944,18 +3119,15 @@ links.Timeline.prototype.onDblClick = function (event) {
 
             // create a new event at the current mouse position
             var xstart = this.screenToTime(x);
-            var xend = this.screenToTime(x  + size.frameWidth / 10); // add 10% of timeline width
             if (options.snapEvents) {
                 this.step.snap(xstart);
-                this.step.snap(xend);
             }
 
-            var content = "New";
+            var content = options.NEW;
             var group = this.getGroupFromHeight(y);   // (group may be undefined)
             var preventRender = true;
             this.addItem({
                 'start': xstart,
-                'end': xend,
                 'content': content,
                 'group': this.getGroupName(group)
             }, preventRender);
@@ -2998,7 +3170,7 @@ links.Timeline.prototype.onMouseWheel = function(event) {
         event = window.event;
     }
 
-    // retrieve delta    
+    // retrieve delta
     var delta = 0;
     if (event.wheelDelta) { /* IE/Opera. */
         delta = event.wheelDelta/120;
@@ -3012,7 +3184,7 @@ links.Timeline.prototype.onMouseWheel = function(event) {
     // Basically, delta is now positive if wheel was scrolled up,
     // and negative, if wheel was scrolled down.
     if (delta) {
-        // TODO: on FireFox, the window is not redrawn within repeated scroll-events 
+        // TODO: on FireFox, the window is not redrawn within repeated scroll-events
         // -> use a delayed redraw? Make a zoom queue?
 
         var timeline = this;
@@ -3033,7 +3205,19 @@ links.Timeline.prototype.onMouseWheel = function(event) {
             timeline.trigger("rangechanged");
         };
 
-        zoom();
+        var scroll = function () {
+            // Scroll the timeline
+            timeline.move(delta * -0.2);
+            timeline.trigger("rangechange");
+            timeline.trigger("rangechanged");
+        };
+
+        if (event.shiftKey) {
+            scroll();
+        }
+        else {
+            zoom();
+        }
     }
 
     // Prevent default actions caused by mouse wheel.
@@ -3084,11 +3268,11 @@ links.Timeline.prototype.zoom = function(zoomFactor, zoomAroundDate) {
     // only zoom in when interval is larger than minimum interval (to prevent
     // sliding to left/right when having reached the minimum zoom level)
     var interval = (newEnd.valueOf() - newStart.valueOf());
-    var intervalMin = Number(this.options.intervalMin) || 10;
-    if (intervalMin < 10) {
-        intervalMin = 10;
+    var zoomMin = Number(this.options.zoomMin) || 10;
+    if (zoomMin < 10) {
+        zoomMin = 10;
     }
-    if (interval >= intervalMin) {
+    if (interval >= zoomMin) {
         this.applyRange(newStart, newEnd, zoomAroundDate);
         this.render({
             animate: this.options.animate && this.options.animateZoom
@@ -3131,16 +3315,16 @@ links.Timeline.prototype.applyRange = function (start, end, zoomAroundDate) {
     // determine maximum and minimum interval
     var options = this.options;
     var year = 1000 * 60 * 60 * 24 * 365;
-    var intervalMin = Number(options.intervalMin) || 10;
-    if (intervalMin < 10) {
-        intervalMin = 10;
+    var zoomMin = Number(options.zoomMin) || 10;
+    if (zoomMin < 10) {
+        zoomMin = 10;
     }
-    var intervalMax = Number(options.intervalMax) || 10000 * year;
-    if (intervalMax > 10000 * year) {
-        intervalMax = 10000 * year;
+    var zoomMax = Number(options.zoomMax) || 10000 * year;
+    if (zoomMax > 10000 * year) {
+        zoomMax = 10000 * year;
     }
-    if (intervalMax < intervalMin) {
-        intervalMax = intervalMin;
+    if (zoomMax < zoomMin) {
+        zoomMax = zoomMin;
     }
 
     // determine min and max date value
@@ -3152,11 +3336,11 @@ links.Timeline.prototype.applyRange = function (start, end, zoomAroundDate) {
             var day = 1000 * 60 * 60 * 24;
             max = min + day;
         }
-        if (intervalMax > (max - min)) {
-            intervalMax = (max - min);
+        if (zoomMax > (max - min)) {
+            zoomMax = (max - min);
         }
-        if (intervalMin > (max - min)) {
-            intervalMin = (max - min);
+        if (zoomMin > (max - min)) {
+            zoomMin = (max - min);
         }
     }
 
@@ -3167,16 +3351,16 @@ links.Timeline.prototype.applyRange = function (start, end, zoomAroundDate) {
 
     // prevent too small scale
     // TODO: IE has problems with milliseconds
-    if (interval < intervalMin) {
-        var diff = (intervalMin - interval);
+    if (interval < zoomMin) {
+        var diff = (zoomMin - interval);
         var f = zoomAroundDate ? (zoomAroundDate.valueOf() - startValue) / interval : 0.5;
         startValue -= Math.round(diff * f);
         endValue   += Math.round(diff * (1 - f));
     }
 
     // prevent too large scale
-    if (interval > intervalMax) {
-        var diff = (interval - intervalMax);
+    if (interval > zoomMax) {
+        var diff = (interval - zoomMax);
         var f = zoomAroundDate ? (zoomAroundDate.valueOf() - startValue) / interval : 0.5;
         startValue += Math.round(diff * f);
         endValue   -= Math.round(diff * (1 - f));
@@ -3219,8 +3403,8 @@ links.Timeline.prototype.confirmDeleteItem = function(index) {
         this.selectItem(index);
     }
 
-    // fire a delete event trigger. 
-    // Note that the delete event can be canceled from within an event listener if 
+    // fire a delete event trigger.
+    // Note that the delete event can be canceled from within an event listener if
     // this listener calls the method cancelChange().
     this.trigger('delete');
 
@@ -3242,7 +3426,7 @@ links.Timeline.prototype.deleteItem = function(index, preventRender) {
         throw "Cannot delete row, index out of range";
     }
 
-    if (this.selection) {
+    if (this.selection && this.selection.index !== undefined) {
         // adjust the selection
         if (this.selection.index == index) {
             // item to be deleted is selected
@@ -3356,7 +3540,7 @@ links.Timeline.prototype.getGroupFromHeight = function(height) {
 /**
  * @constructor links.Timeline.Item
  * @param {Object} data       Object containing parameters start, end
- *                            content, group. type, group.
+ *                            content, group, type, editable.
  * @param {Object} [options]  Options to set initial property values
  *                                {Number} top
  *                                {Number} left
@@ -3375,6 +3559,7 @@ links.Timeline.Item = function (data, options) {
         this.className = data.className;
         this.editable = data.editable;
         this.group = data.group;
+        this.type = data.type;
     }
     this.top = 0;
     this.left = 0;
@@ -3505,6 +3690,16 @@ links.Timeline.Item.prototype.setPosition = function (left, right) {
 };
 
 /**
+ * Calculate the left position of the item
+ * @param {links.Timeline} timeline
+ * @return {Number} left
+ */
+links.Timeline.Item.prototype.getLeft = function (timeline) {
+    // Should be implemented by sub-prototype
+    return 0;
+};
+
+/**
  * Calculate the right position of the item
  * @param {links.Timeline} timeline
  * @return {Number} right
@@ -3529,7 +3724,7 @@ links.Timeline.Item.prototype.getWidth = function (timeline) {
  * @constructor links.Timeline.ItemBox
  * @extends links.Timeline.Item
  * @param {Object} data       Object containing parameters start, end
- *                            content, group. type, group.
+ *                            content, group, type, className, editable.
  * @param {Object} [options]  Options to set initial property values
  *                                {Number} top
  *                                {Number} left
@@ -3571,9 +3766,9 @@ links.Timeline.ItemBox.prototype.reflow = function () {
  */
 links.Timeline.ItemBox.prototype.select = function () {
     var dom = this.dom;
-    links.Timeline.addClassName(dom, 'timeline-event-selected');
-    links.Timeline.addClassName(dom.line, 'timeline-event-selected');
-    links.Timeline.addClassName(dom.dot, 'timeline-event-selected');
+    links.Timeline.addClassName(dom, 'timeline-event-selected ui-state-active');
+    links.Timeline.addClassName(dom.line, 'timeline-event-selected ui-state-active');
+    links.Timeline.addClassName(dom.dot, 'timeline-event-selected ui-state-active');
 };
 
 /**
@@ -3582,9 +3777,9 @@ links.Timeline.ItemBox.prototype.select = function () {
  */
 links.Timeline.ItemBox.prototype.unselect = function () {
     var dom = this.dom;
-    links.Timeline.removeClassName(dom, 'timeline-event-selected');
-    links.Timeline.removeClassName(dom.line, 'timeline-event-selected');
-    links.Timeline.removeClassName(dom.dot, 'timeline-event-selected');
+    links.Timeline.removeClassName(dom, 'timeline-event-selected ui-state-active');
+    links.Timeline.removeClassName(dom.line, 'timeline-event-selected ui-state-active');
+    links.Timeline.removeClassName(dom.dot, 'timeline-event-selected ui-state-active');
 };
 
 /**
@@ -3690,14 +3885,14 @@ links.Timeline.ItemBox.prototype.updateDOM = function () {
         divBox.firstChild.innerHTML = this.content;
 
         // update class
-        divBox.className = "timeline-event timeline-event-box";
-        divLine.className = "timeline-event timeline-event-line";
-        divDot.className  = "timeline-event timeline-event-dot";
+        divBox.className = "timeline-event timeline-event-box ui-widget ui-state-default";
+        divLine.className = "timeline-event timeline-event-line ui-widget ui-state-default";
+        divDot.className  = "timeline-event timeline-event-dot ui-widget ui-state-default";
 
         if (this.isCluster) {
-            links.Timeline.addClassName(divBox, 'timeline-event-cluster');
-            links.Timeline.addClassName(divLine, 'timeline-event-cluster');
-            links.Timeline.addClassName(divDot, 'timeline-event-cluster');
+            links.Timeline.addClassName(divBox, 'timeline-event-cluster ui-widget-header');
+            links.Timeline.addClassName(divLine, 'timeline-event-cluster ui-widget-header');
+            links.Timeline.addClassName(divDot, 'timeline-event-cluster ui-widget-header');
         }
 
         // add item specific class name when provided
@@ -3790,6 +3985,27 @@ links.Timeline.ItemBox.prototype.setPosition = function (left, right) {
 };
 
 /**
+ * Calculate the left position of the item
+ * @param {links.Timeline} timeline
+ * @return {Number} left
+ * @override
+ */
+links.Timeline.ItemBox.prototype.getLeft = function (timeline) {
+    var boxAlign = (timeline.options.box && timeline.options.box.align) ?
+        timeline.options.box.align : undefined;
+
+    var left = timeline.timeToScreen(this.start);
+    if (boxAlign == 'right') {
+        left = left - width;
+    }
+    else { // default or 'center'
+        left = (left - this.width / 2);
+    }
+
+    return left;
+};
+
+/**
  * Calculate the right position of the item
  * @param {links.Timeline} timeline
  * @return {Number} right
@@ -3818,7 +4034,7 @@ links.Timeline.ItemBox.prototype.getRight = function (timeline) {
  * @constructor links.Timeline.ItemRange
  * @extends links.Timeline.Item
  * @param {Object} data       Object containing parameters start, end
- *                            content, group. type, group.
+ *                            content, group, type, className, editable.
  * @param {Object} [options]  Options to set initial property values
  *                                {Number} top
  *                                {Number} left
@@ -3837,7 +4053,7 @@ links.Timeline.ItemRange.prototype = new links.Timeline.Item();
  */
 links.Timeline.ItemRange.prototype.select = function () {
     var dom = this.dom;
-    links.Timeline.addClassName(dom, 'timeline-event-selected');
+    links.Timeline.addClassName(dom, 'timeline-event-selected ui-state-active');
 };
 
 /**
@@ -3846,7 +4062,7 @@ links.Timeline.ItemRange.prototype.select = function () {
  */
 links.Timeline.ItemRange.prototype.unselect = function () {
     var dom = this.dom;
-    links.Timeline.removeClassName(dom, 'timeline-event-selected');
+    links.Timeline.removeClassName(dom, 'timeline-event-selected ui-state-active');
 };
 
 /**
@@ -3921,10 +4137,10 @@ links.Timeline.ItemRange.prototype.updateDOM = function () {
         divBox.firstChild.innerHTML = this.content;
 
         // update class
-        divBox.className = "timeline-event timeline-event-range";
+        divBox.className = "timeline-event timeline-event-range ui-widget ui-state-default";
 
         if (this.isCluster) {
-            links.Timeline.addClassName(divBox, 'timeline-event-cluster');
+            links.Timeline.addClassName(divBox, 'timeline-event-cluster ui-widget-header');
         }
 
         // add item specific class name when provided
@@ -3999,6 +4215,16 @@ links.Timeline.ItemRange.prototype.setPosition = function (left, right) {
 };
 
 /**
+ * Calculate the left position of the item
+ * @param {links.Timeline} timeline
+ * @return {Number} left
+ * @override
+ */
+links.Timeline.ItemRange.prototype.getLeft = function (timeline) {
+    return timeline.timeToScreen(this.start);
+};
+
+/**
  * Calculate the right position of the item
  * @param {links.Timeline} timeline
  * @return {Number} right
@@ -4019,10 +4245,241 @@ links.Timeline.ItemRange.prototype.getWidth = function (timeline) {
 };
 
 /**
+ * @constructor links.Timeline.ItemFloatingRange
+ * @extends links.Timeline.Item
+ * @param {Object} data       Object containing parameters start, end
+ *                            content, group, type, className, editable.
+ * @param {Object} [options]  Options to set initial property values
+ *                                {Number} top
+ *                                {Number} left
+ *                                {Number} width
+ *                                {Number} height
+ */
+links.Timeline.ItemFloatingRange = function (data, options) {
+    links.Timeline.Item.call(this, data, options);
+};
+
+links.Timeline.ItemFloatingRange.prototype = new links.Timeline.Item();
+
+/**
+ * Select the item
+ * @override
+ */
+links.Timeline.ItemFloatingRange.prototype.select = function () {
+    var dom = this.dom;
+    links.Timeline.addClassName(dom, 'timeline-event-selected ui-state-active');
+};
+
+/**
+ * Unselect the item
+ * @override
+ */
+links.Timeline.ItemFloatingRange.prototype.unselect = function () {
+    var dom = this.dom;
+    links.Timeline.removeClassName(dom, 'timeline-event-selected ui-state-active');
+};
+
+/**
+ * Creates the DOM for the item, depending on its type
+ * @return {Element | undefined}
+ * @override
+ */
+links.Timeline.ItemFloatingRange.prototype.createDOM = function () {
+    // background box
+    var divBox = document.createElement("DIV");
+    divBox.style.position = "absolute";
+
+    // contents box
+    var divContent = document.createElement("DIV");
+    divContent.className = "timeline-event-content";
+    divBox.appendChild(divContent);
+
+    this.dom = divBox;
+    this.updateDOM();
+
+    return divBox;
+};
+
+/**
+ * Append the items DOM to the given HTML container. If items DOM does not yet
+ * exist, it will be created first.
+ * @param {Element} container
+ * @override
+ */
+links.Timeline.ItemFloatingRange.prototype.showDOM = function (container) {
+    var dom = this.dom;
+    if (!dom) {
+        dom = this.createDOM();
+    }
+
+    if (dom.parentNode != container) {
+        if (dom.parentNode) {
+            // container changed. remove the item from the old container
+            this.hideDOM();
+        }
+
+        // append to the new container
+        container.appendChild(dom);
+        this.rendered = true;
+    }
+};
+
+/**
+ * Remove the items DOM from the current HTML container
+ * The DOM will be kept in memory
+ * @override
+ */
+links.Timeline.ItemFloatingRange.prototype.hideDOM = function () {
+    var dom = this.dom;
+    if (dom) {
+        if (dom.parentNode) {
+            dom.parentNode.removeChild(dom);
+        }
+        this.rendered = false;
+    }
+};
+
+/**
+ * Update the DOM of the item. This will update the content and the classes
+ * of the item
+ * @override
+ */
+links.Timeline.ItemFloatingRange.prototype.updateDOM = function () {
+    var divBox = this.dom;
+    if (divBox) {
+        // update contents
+        divBox.firstChild.innerHTML = this.content;
+
+        // update class
+        divBox.className = "timeline-event timeline-event-range ui-widget ui-state-default";
+
+        if (this.isCluster) {
+            links.Timeline.addClassName(divBox, 'timeline-event-cluster ui-widget-header');
+        }
+
+        // add item specific class name when provided
+        if (this.className) {
+            links.Timeline.addClassName(divBox, this.className);
+        }
+
+        // TODO: apply selected className?
+    }
+};
+
+/**
+ * Reposition the item, recalculate its left, top, and width, using the current
+ * range of the timeline and the timeline options. *
+ * @param {links.Timeline} timeline
+ * @override
+ */
+links.Timeline.ItemFloatingRange.prototype.updatePosition = function (timeline) {
+    var dom = this.dom;
+    if (dom) {
+        var contentWidth = timeline.size.contentWidth,
+            left = this.getLeft(timeline), // NH use getLeft
+            right = this.getRight(timeline); // NH use getRight;
+
+        // limit the width of the this, as browsers cannot draw very wide divs
+        if (left < -contentWidth) {
+            left = -contentWidth;
+        }
+        if (right > 2 * contentWidth) {
+            right = 2 * contentWidth;
+        }
+
+        dom.style.top = this.top + "px";
+        dom.style.left = left + "px";
+        //dom.style.width = Math.max(right - left - 2 * this.borderWidth, 1) + "px"; // TODO: borderWidth
+        dom.style.width = Math.max(right - left, 1) + "px";
+    }
+};
+
+/**
+ * Check if the item is visible in the timeline, and not part of a cluster
+ * @param {Number} start
+ * @param {Number} end
+ * @return {boolean} visible
+ * @override
+ */
+links.Timeline.ItemFloatingRange.prototype.isVisible = function (start, end) {
+    if (this.cluster) {
+        return false;
+    }
+
+	// NH check for no end value
+	if (this.end && this.start) {
+		return (this.end > start)
+			&& (this.start < end);
+	} else if (this.start) {
+		return (this.start < end);
+	} else if (this.end) {
+        return (this.end > start);
+    } else {return true;}
+};
+
+/**
+ * Reposition the item
+ * @param {Number} left
+ * @param {Number} right
+ * @override
+ */
+links.Timeline.ItemFloatingRange.prototype.setPosition = function (left, right) {
+    var dom = this.dom;
+
+    dom.style.left = left + 'px';
+    dom.style.width = (right - left) + 'px';
+
+    if (this.group) {
+        this.top = this.group.top;
+        dom.style.top = this.top + 'px';
+    }
+};
+
+/**
+ * Calculate the left position of the item
+ * @param {links.Timeline} timeline
+ * @return {Number} left
+ * @override
+ */
+links.Timeline.ItemFloatingRange.prototype.getLeft = function (timeline) {
+    // NH check for no start value
+	if (this.start) {
+		return timeline.timeToScreen(this.start);
+	} else {
+		return 0;
+	}
+};
+
+/**
+ * Calculate the right position of the item
+ * @param {links.Timeline} timeline
+ * @return {Number} right
+ * @override
+ */
+links.Timeline.ItemFloatingRange.prototype.getRight = function (timeline) {
+    // NH check for no end value
+	if (this.end) {
+		return timeline.timeToScreen(this.end);
+	} else {
+		return timeline.size.contentWidth;
+	}
+};
+
+/**
+ * Calculate the width of the item
+ * @param {links.Timeline} timeline
+ * @return {Number} width
+ * @override
+ */
+links.Timeline.ItemFloatingRange.prototype.getWidth = function (timeline) {
+    return this.getRight(timeline) - this.getLeft(timeline);
+};
+
+/**
  * @constructor links.Timeline.ItemDot
  * @extends links.Timeline.Item
  * @param {Object} data       Object containing parameters start, end
- *                            content, group, type.
+ *                            content, group, type, className, editable.
  * @param {Object} [options]  Options to set initial property values
  *                                {Number} top
  *                                {Number} left
@@ -4064,7 +4521,7 @@ links.Timeline.ItemDot.prototype.reflow = function () {
  */
 links.Timeline.ItemDot.prototype.select = function () {
     var dom = this.dom;
-    links.Timeline.addClassName(dom, 'timeline-event-selected');
+    links.Timeline.addClassName(dom, 'timeline-event-selected ui-state-active');
 };
 
 /**
@@ -4073,7 +4530,7 @@ links.Timeline.ItemDot.prototype.select = function () {
  */
 links.Timeline.ItemDot.prototype.unselect = function () {
     var dom = this.dom;
-    links.Timeline.removeClassName(dom, 'timeline-event-selected');
+    links.Timeline.removeClassName(dom, 'timeline-event-selected ui-state-active');
 };
 
 /**
@@ -4158,12 +4615,13 @@ links.Timeline.ItemDot.prototype.updateDOM = function () {
         // update contents
         divBox.firstChild.innerHTML = this.content;
 
-        // update class
-        divDot.className  = "timeline-event timeline-event-dot";
+        // update classes
+        divBox.className = "timeline-event-dot-container";
+        divDot.className  = "timeline-event timeline-event-dot ui-widget ui-state-default";
 
         if (this.isCluster) {
-            links.Timeline.addClassName(divBox, 'timeline-event-cluster');
-            links.Timeline.addClassName(divDot, 'timeline-event-cluster');
+            links.Timeline.addClassName(divBox, 'timeline-event-cluster ui-widget-header');
+            links.Timeline.addClassName(divDot, 'timeline-event-cluster ui-widget-header');
         }
 
         // add item specific class name when provided
@@ -4230,6 +4688,16 @@ links.Timeline.ItemDot.prototype.setPosition = function (left, right) {
 };
 
 /**
+ * Calculate the left position of the item
+ * @param {links.Timeline} timeline
+ * @return {Number} left
+ * @override
+ */
+links.Timeline.ItemDot.prototype.getLeft = function (timeline) {
+    return timeline.timeToScreen(this.start);
+};
+
+/**
  * Calculate the right position of the item
  * @param {links.Timeline} timeline
  * @return {Number} right
@@ -4242,30 +4710,105 @@ links.Timeline.ItemDot.prototype.getRight = function (timeline) {
 /**
  * Retrieve the properties of an item.
  * @param {Number} index
- * @return {Object} properties   Object containing item properties:<br>
+ * @return {Object} itemData    Object containing item properties:<br>
  *                              {Date} start (required),
  *                              {Date} end (optional),
  *                              {String} content (required),
- *                              {String} group (optional)
+ *                              {String} group (optional),
+ *                              {String} className (optional)
+ *                              {boolean} editable (optional)
+ *                              {String} type (optional)
  */
 links.Timeline.prototype.getItem = function (index) {
     if (index >= this.items.length) {
         throw "Cannot get item, index out of range";
     }
 
+    // take the original data as start, includes foreign fields
+    var data = this.data,
+        itemData;
+    if (google && google.visualization &&
+        data instanceof google.visualization.DataTable) {
+        // map the datatable columns
+        var cols = links.Timeline.mapColumnIds(data);
+
+        itemData = {};
+        for (var col in cols) {
+            if (cols.hasOwnProperty(col)) {
+                itemData[col] = this.data.getValue(index, cols[col]);
+            }
+        }
+    }
+    else if (links.Timeline.isArray(this.data)) {
+        // read JSON array
+        itemData = links.Timeline.clone(this.data[index]);
+    }
+    else {
+        throw "Unknown data type. DataTable or Array expected.";
+    }
+
+    // override the data with current settings of the item (should be the same)
     var item = this.items[index];
 
-    var properties = {};
-    properties.start = new Date(item.start.valueOf());
+    itemData.start = new Date(item.start.valueOf());
     if (item.end) {
-        properties.end = new Date(item.end.valueOf());
+        itemData.end = new Date(item.end.valueOf());
     }
-    properties.content = item.content;
+    itemData.content = item.content;
     if (item.group) {
-        properties.group = this.getGroupName(item.group);
+        itemData.group = this.getGroupName(item.group);
+    }
+    if (item.className) {
+        itemData.className = item.className;
+    }
+    if (typeof item.editable !== 'undefined') {
+        itemData.editable = item.editable;
+    }
+    if (item.type) {
+        itemData.type = item.type;
     }
 
-    return properties;
+    return itemData;
+};
+
+
+/**
+ * Retrieve the properties of a cluster.
+ * @param {Number} index
+ * @return {Object} clusterdata    Object containing cluster properties:<br>
+ *                              {Date} start (required),
+ *                              {String} type (optional)
+ *                              {Array} array with item data as is in getItem()
+ */
+links.Timeline.prototype.getCluster = function (index) {
+    if (index >= this.clusters.length) {
+        throw "Cannot get cluster, index out of range";
+    }
+
+    var clusterData = {},
+        cluster = this.clusters[index],
+        clusterItems = cluster.items;
+    
+    clusterData.start = new Date(cluster.start.valueOf());
+    if (cluster.type) {
+        clusterData.type = cluster.type;
+    }
+
+    // push cluster item data
+    clusterData.items = [];
+    for(var i = 0; i < clusterItems.length; i++){
+        for(var j = 0; j < this.items.length; j++){
+            // TODO could be nicer to be able to have the item index into the cluster
+            if(this.items[j] == clusterItems[i])
+            {
+                clusterData.items.push(this.getItem(j));
+                break;
+            }
+
+        }
+    }
+
+    return clusterData;
 };
 
 /**
@@ -4275,6 +4818,9 @@ links.Timeline.prototype.getItem = function (index) {
  *                              {Date} end (optional),
  *                              {String} content (required),
  *                              {String} group (optional)
+ *                              {String} className (optional)
+ *                              {Boolean} editable (optional)
+ *                              {String} type (optional)
  * @param {boolean} [preventRender=false]   Do not re-render timeline if true
  */
 links.Timeline.prototype.addItem = function (itemData, preventRender) {
@@ -4292,7 +4838,10 @@ links.Timeline.prototype.addItem = function (itemData, preventRender) {
  *                            {Date} start,
  *                            {Date} end,
  *                            {String} content with text or HTML code,
- *                            {String} group
+ *                            {String} group (optional)
+ *                            {String} className (optional)
+ *                            {String} editable (optional)
+ *                            {String} type (optional)
  * @param {boolean} [preventRender=false]   Do not re-render timeline if true
  */
 links.Timeline.prototype.addItems = function (itemsData, preventRender) {
@@ -4329,15 +4878,10 @@ links.Timeline.prototype.addItems = function (itemsData, preventRender) {
  * @return {Object} item
  */
 links.Timeline.prototype.createItem = function(itemData) {
-    var type = itemData.end ? 'range' : this.options.style;
-    var data = {
-        start: itemData.start,
-        end: itemData.end,
-        content: itemData.content,
-        className: itemData.className,
-        editable: itemData.editable,
-        group: this.getGroup(itemData.group)
-    };
+    var type = itemData.type || (itemData.end ? 'range' : this.options.style);
+    var data = links.Timeline.clone(itemData);
+    data.type = type;
+    data.group = this.getGroup(itemData.group);
     // TODO: optimize this, when creating an item, all data is copied twice...
 
     // TODO: is initialTop needed?
@@ -4354,7 +4898,7 @@ links.Timeline.prototype.createItem = function(itemData) {
         return new this.itemTypes[type](data, {'top': initialTop})
     }
 
-    console.log('ERROR: Unknown event style "' + type + '"');
+    console.log('ERROR: Unknown event type "' + type + '"');
     return new links.Timeline.Item(data, {
         'top': initialTop
     });
@@ -4382,7 +4926,9 @@ links.Timeline.prototype.changeItem = function (index, itemData, preventRender) 
         'end':     itemData.hasOwnProperty('end') ?     itemData.end :     oldItem.end,
         'content': itemData.hasOwnProperty('content') ? itemData.content : oldItem.content,
         'group':   itemData.hasOwnProperty('group') ?   itemData.group :   this.getGroupName(oldItem.group),
-        'className': itemData.hasOwnProperty('className') ? itemData.className : oldItem.className
+        'className': itemData.hasOwnProperty('className') ? itemData.className : oldItem.className,
+        'editable':  itemData.hasOwnProperty('editable') ?  itemData.editable :  oldItem.editable,
+        'type':      itemData.hasOwnProperty('type') ?      itemData.type :      oldItem.type
     });
     this.items[index] = newItem;
 
@@ -4404,7 +4950,9 @@ links.Timeline.prototype.changeItem = function (index, itemData, preventRender) 
             animate: false
         });
 
-        newItem.select();
+        if (this.selection && this.selection.index == index) {
+            newItem.select();
+        }
     }
 };
 
@@ -4434,20 +4982,24 @@ links.Timeline.prototype.getGroup = function (groupName) {
             'content': groupName,
             'labelTop': 0,
             'lineTop': 0
-            // note: this object will lateron get addition information, 
-            //       such as height and width of the group         
+            // note: this object will lateron get addition information,
+            //       such as height and width of the group
         };
         groups.push(groupObj);
         // sort the groups
-        groups = groups.sort(function (a, b) {
-            if (a.content > b.content) {
-                return 1;
-            }
-            if (a.content < b.content) {
-                return -1;
-            }
-            return 0;
-        });
+        if (this.options.groupsOrder == true) {
+            groups = groups.sort(function (a, b) {
+                if (a.content > b.content) {
+                    return 1;
+		        }
+		        if (a.content < b.content) {
+		            return -1;
+		        }
+		        return 0;
+        	});
+        } else if (typeof(this.options.groupsOrder) == "function") {
+        	groups = groups.sort(this.options.groupsOrder)
+        }
 
         // rebuilt the groupIndexes
         for (var i = 0, iMax = groups.length; i < iMax; i++) {
@@ -4551,7 +5103,12 @@ links.Timeline.prototype.setSelection = function(selection) {
 links.Timeline.prototype.getSelection = function() {
     var sel = [];
     if (this.selection) {
-        sel.push({"row": this.selection.index});
+        if(this.selection.index !== undefined)
+        {
+            sel.push({"row": this.selection.index});
+        } else {
+            sel.push({"cluster": this.selection.cluster});
+        }
     }
     return sel;
 };
@@ -4587,6 +5144,24 @@ links.Timeline.prototype.selectItem = function(index) {
 };
 
 /**
+ * Select an cluster by its index
+ * @param {Number} index
+ */
+links.Timeline.prototype.selectCluster = function(index) {
+    this.unselectItem();
+
+    this.selection = undefined;
+
+    if (this.clusters[index] != undefined) {
+        this.selection = {
+            'cluster': index
+        };
+        this.repaintDeleteButton();
+        this.repaintDragAreas();
+    }
+};
+
+/**
  * Check if an item is currently selected
  * @param {Number} index
  * @return {boolean} true if row is selected, else false
@@ -4599,7 +5174,7 @@ links.Timeline.prototype.isSelected = function (index) {
  * Unselect the currently selected event (if any)
  */
 links.Timeline.prototype.unselectItem = function() {
-    if (this.selection) {
+    if (this.selection && this.selection.index !== undefined) {
         var item = this.items[this.selection.index];
 
         if (item && item.dom) {
@@ -4623,12 +5198,6 @@ links.Timeline.prototype.unselectItem = function() {
  *                                         defaults to false.
  */
 links.Timeline.prototype.stackItems = function(animate) {
-    if (this.groups.length > 0) {
-        // under this conditions we refuse to stack the events
-        // TODO: implement support for stacking items per group
-        return;
-    }
-
     if (animate == undefined) {
         animate = false;
     }
@@ -4679,6 +5248,29 @@ links.Timeline.prototype.stackCancelAnimation = function() {
     }
 };
 
+links.Timeline.prototype.getItemsByGroup = function(items) {
+    var itemsByGroup = {};
+    for (var i = 0; i < items.length; ++i) {
+        var item = items[i];
+        var group = "undefined";
+
+        if (item.group) {
+            if (item.group.content) {
+                group = item.group.content;
+            } else {
+                group = item.group;
+            }
+        }
+
+        if (!itemsByGroup[group]) {
+            itemsByGroup[group] = [];
+        }
+
+        itemsByGroup[group].push(item);
+    }
+
+    return itemsByGroup;
+};
 
 /**
  * Order the items in the array this.items. The default order is determined via:
@@ -4692,16 +5284,16 @@ links.Timeline.prototype.stackOrder = function(items) {
     // TODO: store the sorted items, to have less work later on
     var sortedItems = items.concat([]);
 
-    //if a customer stack order function exists, use it. 
+    //if a customer stack order function exists, use it.
     var f = this.options.customStackOrder && (typeof this.options.customStackOrder === 'function') ? this.options.customStackOrder : function (a, b)
     {
-        if ((a instanceof links.Timeline.ItemRange) &&
-            !(b instanceof links.Timeline.ItemRange)) {
+        if ((a instanceof links.Timeline.ItemRange || a instanceof links.Timeline.ItemFloatingRange) &&
+            !(b instanceof links.Timeline.ItemRange || b instanceof links.Timeline.ItemFloatingRange)) {
             return -1;
         }
 
-        if (!(a instanceof links.Timeline.ItemRange) &&
-            (b instanceof links.Timeline.ItemRange)) {
+        if (!(a instanceof links.Timeline.ItemRange || a instanceof links.Timeline.ItemFloatingRange) &&
+            (b instanceof links.Timeline.ItemRange || b instanceof links.Timeline.ItemFloatingRange)) {
             return 1;
         }
 
@@ -4720,56 +5312,83 @@ links.Timeline.prototype.stackOrder = function(items) {
  * @return {Object[]} finalItems
  */
 links.Timeline.prototype.stackCalculateFinal = function(items) {
-    var i,
-        iMax,
-        size = this.size,
-        axisTop = size.axis.top,
-        axisHeight = size.axis.height,
+    var size = this.size,
         options = this.options,
         axisOnTop = options.axisOnTop,
         eventMargin = options.eventMargin,
         eventMarginAxis = options.eventMarginAxis,
-        finalItems = [];
+        groupBase = (axisOnTop)
+                  ? size.axis.height + eventMarginAxis + eventMargin/2
+                  : size.contentHeight - eventMarginAxis - eventMargin/2,
+        groupedItems, groupFinalItems, finalItems = [];
 
-    // initialize final positions
-    for (i = 0, iMax = items.length; i < iMax; i++) {
-        var item = items[i],
-            top,
-            bottom,
-            height = item.height,
-            width = item.getWidth(this),
-            right = item.getRight(this),
-            left = right - width;
+    groupedItems = this.getItemsByGroup(items);
+
+    //
+    // groupedItems contains all items by group, plus it may contain an
+    // additional "undefined" group which contains all items with no group. We
+    // first process the grouped items, and then the ungrouped
+    //
+    for (j = 0; j<this.groups.length; ++j) {
+        var group = this.groups[j];
+
+        if (!groupedItems[group.content]) {
+            if (axisOnTop) {
+                groupBase += options.groupMinHeight + eventMargin;
+            } else {
+                groupBase -= (options.groupMinHeight + eventMargin);
+            }
+            continue;
+        }
+
+        // initialize final positions and fill finalItems
+        groupFinalItems = this.finalItemsPosition(groupedItems[group.content], groupBase, group);
+        groupFinalItems.forEach(function(item) {
+           finalItems.push(item);
+        });
 
         if (axisOnTop) {
-            top = axisHeight + eventMarginAxis + eventMargin / 2;
+            groupBase += group.itemsHeight + eventMargin;
+        } else {
+            groupBase -= (group.itemsHeight + eventMargin);
         }
-        else {
-            top = axisTop - height - eventMarginAxis - eventMargin / 2;
-        }
-        bottom = top + height;
-
-        finalItems[i] = {
-            'left': left,
-            'top': top,
-            'right': right,
-            'bottom': bottom,
-            'height': height,
-            'item': item
-        };
     }
 
-    if (this.options.stackEvents) {
-        // calculate new, non-overlapping positions
-        //var items = sortedItems;
-        for (i = 0, iMax = finalItems.length; i < iMax; i++) {
-            //for (var i = finalItems.length - 1; i >= 0; i--) {
-            var finalItem = finalItems[i];
-            var collidingItem = null;
+    //
+    // Ungrouped items' turn now!
+    //
+    if (groupedItems["undefined"]) {
+        // initialize final positions and fill finalItems
+        groupFinalItems = this.finalItemsPosition(groupedItems["undefined"], groupBase);
+        groupFinalItems.forEach(function(item) {
+           finalItems.push(item);
+        });
+    }
+
+    return finalItems;
+};
+
+links.Timeline.prototype.finalItemsPosition = function(items, groupBase, group) {
+    var i,
+        iMax,
+        options = this.options,
+        axisOnTop = options.axisOnTop,
+        eventMargin = options.eventMargin,
+        groupFinalItems;
+
+    // initialize final positions and fill finalItems
+    groupFinalItems = this.initialItemsPosition(items, groupBase);
+
+    // calculate new, non-overlapping positions
+    for (i = 0, iMax = groupFinalItems.length; i < iMax; i++) {
+        var finalItem = groupFinalItems[i];
+        var collidingItem = null;
+
+        if (this.options.stackEvents) {
             do {
                 // TODO: optimize checking for overlap. when there is a gap without items,
                 //  you only need to check for items from the next item on, not from zero
-                collidingItem = this.stackItemsCheckOverlap(finalItems, i, 0, i-1);
+                collidingItem = this.stackItemsCheckOverlap(groupFinalItems, i, 0, i-1);
                 if (collidingItem != null) {
                     // There is a collision. Reposition the event above the colliding element
                     if (axisOnTop) {
@@ -4782,11 +5401,54 @@ links.Timeline.prototype.stackCalculateFinal = function(items) {
                 }
             } while (collidingItem);
         }
+
+        if (group) {
+            if (axisOnTop) {
+                group.itemsHeight = (group.itemsHeight)
+                                  ? Math.max(group.itemsHeight, finalItem.bottom - groupBase)
+                                  : finalItem.height + eventMargin;
+            } else {
+                group.itemsHeight = (group.itemsHeight)
+                                  ? Math.max(group.itemsHeight, groupBase - finalItem.top)
+                                  : finalItem.height + eventMargin;
+            }
+        }
+    }
+
+    return groupFinalItems;
+};
+
+links.Timeline.prototype.initialItemsPosition = function(items, groupBase) {
+    var options = this.options,
+        axisOnTop = options.axisOnTop,
+        finalItems = [];
+
+    for (var i = 0, iMax = items.length; i < iMax; ++i) {
+        var item = items[i],
+            top,
+            bottom,
+            height = item.height,
+            width = item.getWidth(this),
+            right = item.getRight(this),
+            left = right - width;
+
+        top = (axisOnTop) ? groupBase
+                          : groupBase - height;
+
+        bottom = top + height;
+
+        finalItems.push({
+            'left': left,
+            'top': top,
+            'right': right,
+            'bottom': bottom,
+            'height': height,
+            'item': item
+        });
     }
 
     return finalItems;
 };
-
 
 /**
  * Move the events one step in the direction of their final positions
@@ -4801,7 +5463,7 @@ links.Timeline.prototype.stackMoveOneStep = function(currentItems, finalItems) {
     var arrived = true;
 
     // apply new positions animated
-    for (i = 0, iMax = finalItems.length; i < iMax; i++) {
+    for (var i = 0, iMax = finalItems.length; i < iMax; i++) {
         var finalItem = finalItems[i],
             item = finalItem.item;
 
@@ -4843,7 +5505,7 @@ links.Timeline.prototype.stackMoveOneStep = function(currentItems, finalItems) {
  */
 links.Timeline.prototype.stackMoveToFinal = function(currentItems, finalItems) {
     // Put the events directly at there final position
-    for (i = 0, iMax = finalItems.length; i < iMax; i++) {
+    for (var i = 0, iMax = finalItems.length; i < iMax; i++) {
         var finalItem = finalItems[i],
             current = finalItem.item;
 
@@ -4870,7 +5532,7 @@ links.Timeline.prototype.stackItemsCheckOverlap = function(items, itemIndex,
     var eventMargin = this.options.eventMargin,
         collision = this.collision;
 
-    // we loop from end to start, as we suppose that the chance of a 
+    // we loop from end to start, as we suppose that the chance of a
     // collision is larger for items at the end, so check these first.
     var item1 = items[itemIndex];
     for (var i = itemEnd; i >= itemStart; i--) {
@@ -4898,7 +5560,7 @@ links.Timeline.prototype.stackItemsCheckOverlap = function(items, itemIndex,
  * @return {boolean}            true if item1 and item2 collide, else false
  */
 links.Timeline.prototype.collision = function(item1, item2, margin) {
-    // set margin if not specified 
+    // set margin if not specified
     if (margin == undefined) {
         margin = 0;
     }
@@ -4953,7 +5615,7 @@ links.Timeline.prototype.clusterItems = function () {
         return;
     }
 
-    var clusters = this.clusterGenerator.getClusters(this.conversion.factor);
+    var clusters = this.clusterGenerator.getClusters(this.conversion.factor, this.options.clusterMaxItems);
     if (this.clusters != clusters) {
         // cluster level changed
         var queue = this.renderQueue;
@@ -5129,20 +5791,14 @@ links.Timeline.ClusterGenerator.prototype.filterData = function () {
  *                           defined as (windowWidth / (endDate - startDate))
  * @return {Item[]} clusters
  */
-links.Timeline.ClusterGenerator.prototype.getClusters = function (scale) {
+links.Timeline.ClusterGenerator.prototype.getClusters = function (scale, maxItems) {
     var level = -1,
         granularity = 2, // TODO: what granularity is needed for the cluster levels?
-        timeWindow = 0,  // milliseconds
-        maxItems = 5;    // TODO: do not hard code maxItems
+        timeWindow = 0;  // milliseconds
 
     if (scale > 0) {
         level = Math.round(Math.log(100 / scale) / Math.log(granularity));
         timeWindow = Math.pow(granularity, level);
-
-        // groups must have a larger time window, as the items will not be stacked
-        if (this.timeline.groups && this.timeline.groups.length) {
-            timeWindow *= 4;
-        }
     }
 
     // clear the cache when and re-filter the data when needed.
@@ -5227,7 +5883,7 @@ links.Timeline.ClusterGenerator.prototype.getClusters = function (scale) {
                             }
                             min = (min != undefined) ? Math.min(min, start) : start;
                             max = (max != undefined) ? Math.max(max, end) : end;
-                            containsRanges = containsRanges || (p instanceof links.Timeline.ItemRange);
+                            containsRanges = containsRanges || (p instanceof links.Timeline.ItemRange || p instanceof links.Timeline.ItemFloatingRange);
                             count++;
                             m++;
                         }
@@ -5537,7 +6193,7 @@ links.Timeline.StepDate.prototype.end = function () {
 links.Timeline.StepDate.prototype.next = function() {
     var prev = this.current.valueOf();
 
-    // Two cases, needed to prevent issues with switching daylight savings 
+    // Two cases, needed to prevent issues with switching daylight savings
     // (end of March and end of October)
     if (this.current.getMonth() < 6)   {
         switch (this.scale) {
@@ -5704,7 +6360,7 @@ links.Timeline.StepDate.prototype.snap = function(date) {
         if (date.getDate() > 15) {
             date.setDate(1);
             date.setMonth(date.getMonth() + 1);
-            // important: first set Date to 1, after that change the month.      
+            // important: first set Date to 1, after that change the month.
         }
         else {
             date.setDate(1);
@@ -5803,16 +6459,10 @@ links.Timeline.StepDate.prototype.isMajor = function() {
  * Returns formatted text for the minor axislabel, depending on the current
  * date and the scale. For example when scale is MINUTE, the current time is
  * formatted as "hh:mm".
+ * @param {Object} options
  * @param {Date} [date] custom date. if not provided, current date is taken
  */
-links.Timeline.StepDate.prototype.getLabelMinor = function(date) {
-    var MONTHS_SHORT = ["Jan", "Feb", "Mar",
-        "Apr", "May", "Jun",
-        "Jul", "Aug", "Sep",
-        "Oct", "Nov", "Dec"];
-    var DAYS_SHORT = ["Sun", "Mon", "Tue",
-        "Wed", "Thu", "Fri", "Sat"];
-
+links.Timeline.StepDate.prototype.getLabelMinor = function(options, date) {
     if (date == undefined) {
         date = this.current;
     }
@@ -5824,9 +6474,9 @@ links.Timeline.StepDate.prototype.getLabelMinor = function(date) {
             return this.addZeros(date.getHours(), 2) + ":" + this.addZeros(date.getMinutes(), 2);
         case links.Timeline.StepDate.SCALE.HOUR:
             return this.addZeros(date.getHours(), 2) + ":" + this.addZeros(date.getMinutes(), 2);
-        case links.Timeline.StepDate.SCALE.WEEKDAY:      return DAYS_SHORT[date.getDay()] + ' ' + date.getDate();
+        case links.Timeline.StepDate.SCALE.WEEKDAY:      return options.DAYS_SHORT[date.getDay()] + ' ' + date.getDate();
         case links.Timeline.StepDate.SCALE.DAY:          return String(date.getDate());
-        case links.Timeline.StepDate.SCALE.MONTH:        return MONTHS_SHORT[date.getMonth()];   // month is zero based
+        case links.Timeline.StepDate.SCALE.MONTH:        return options.MONTHS_SHORT[date.getMonth()];   // month is zero based
         case links.Timeline.StepDate.SCALE.YEAR:         return String(date.getFullYear());
         default:                                         return "";
     }
@@ -5837,16 +6487,10 @@ links.Timeline.StepDate.prototype.getLabelMinor = function(date) {
  * Returns formatted text for the major axislabel, depending on the current
  * date and the scale. For example when scale is MINUTE, the major scale is
  * hours, and the hour will be formatted as "hh".
+ * @param {Object} options
  * @param {Date} [date] custom date. if not provided, current date is taken
  */
-links.Timeline.StepDate.prototype.getLabelMajor = function(date) {
-    var MONTHS = ["January", "February", "March",
-        "April", "May", "June",
-        "July", "August", "September",
-        "October", "November", "December"];
-    var DAYS = ["Sunday", "Monday", "Tuesday",
-        "Wednesday", "Thursday", "Friday", "Saturday"];
-
+links.Timeline.StepDate.prototype.getLabelMajor = function(options, date) {
     if (date == undefined) {
         date = this.current;
     }
@@ -5858,22 +6502,22 @@ links.Timeline.StepDate.prototype.getLabelMajor = function(date) {
                 this.addZeros(date.getSeconds(), 2);
         case links.Timeline.StepDate.SCALE.SECOND:
             return  date.getDate() + " " +
-                MONTHS[date.getMonth()] + " " +
+                options.MONTHS[date.getMonth()] + " " +
                 this.addZeros(date.getHours(), 2) + ":" +
                 this.addZeros(date.getMinutes(), 2);
         case links.Timeline.StepDate.SCALE.MINUTE:
-            return  DAYS[date.getDay()] + " " +
+            return  options.DAYS[date.getDay()] + " " +
                 date.getDate() + " " +
-                MONTHS[date.getMonth()] + " " +
+                options.MONTHS[date.getMonth()] + " " +
                 date.getFullYear();
         case links.Timeline.StepDate.SCALE.HOUR:
-            return  DAYS[date.getDay()] + " " +
+            return  options.DAYS[date.getDay()] + " " +
                 date.getDate() + " " +
-                MONTHS[date.getMonth()] + " " +
+                options.MONTHS[date.getMonth()] + " " +
                 date.getFullYear();
         case links.Timeline.StepDate.SCALE.WEEKDAY:
         case links.Timeline.StepDate.SCALE.DAY:
-            return  MONTHS[date.getMonth()] + " " +
+            return  options.MONTHS[date.getMonth()] + " " +
                 date.getFullYear();
         case links.Timeline.StepDate.SCALE.MONTH:
             return String(date.getFullYear());
@@ -5908,7 +6552,7 @@ links.Timeline.StepDate.prototype.addZeros = function(value, len) {
  */
 links.imageloader = (function () {
     var urls = {};  // the loaded urls
-    var callbacks = {}; // the urls currently being loaded. Each key contains 
+    var callbacks = {}; // the urls currently being loaded. Each key contains
     // an array with callbacks
 
     /**
@@ -6212,24 +6856,21 @@ links.Timeline.getAbsoluteTop = function(elem) {
  * @return {Number} pageY
  */
 links.Timeline.getPageY = function (event) {
+    if (('targetTouches' in event) && event.targetTouches.length) {
+        event = event.targetTouches[0];
+    }
+
     if ('pageY' in event) {
         return event.pageY;
     }
-    else {
-        var clientY;
-        if (('targetTouches' in event) && event.targetTouches.length) {
-            clientY = event.targetTouches[0].clientY;
-        }
-        else {
-            clientY = event.clientY;
-        }
 
-        var doc = document.documentElement;
-        var body = document.body;
-        return clientY +
-            ( doc && doc.scrollTop || body && body.scrollTop || 0 ) -
-            ( doc && doc.clientTop || body && body.clientTop || 0 );
-    }
+    // calculate pageY from clientY
+    var clientY = event.clientY;
+    var doc = document.documentElement;
+    var body = document.body;
+    return clientY +
+        ( doc && doc.scrollTop || body && body.scrollTop || 0 ) -
+        ( doc && doc.clientTop || body && body.clientTop || 0 );
 };
 
 /**
@@ -6238,49 +6879,64 @@ links.Timeline.getPageY = function (event) {
  * @return {Number} pageX
  */
 links.Timeline.getPageX = function (event) {
-    if ('pageY' in event) {
+    if (('targetTouches' in event) && event.targetTouches.length) {
+        event = event.targetTouches[0];
+    }
+
+    if ('pageX' in event) {
         return event.pageX;
     }
-    else {
-        var clientX;
-        if (('targetTouches' in event) && event.targetTouches.length) {
-            clientX = event.targetTouches[0].clientX;
-        }
-        else {
-            clientX = event.clientX;
-        }
 
-        var doc = document.documentElement;
-        var body = document.body;
-        return clientX +
-            ( doc && doc.scrollLeft || body && body.scrollLeft || 0 ) -
-            ( doc && doc.clientLeft || body && body.clientLeft || 0 );
-    }
+    // calculate pageX from clientX
+    var clientX = event.clientX;
+    var doc = document.documentElement;
+    var body = document.body;
+    return clientX +
+        ( doc && doc.scrollLeft || body && body.scrollLeft || 0 ) -
+        ( doc && doc.clientLeft || body && body.clientLeft || 0 );
 };
 
 /**
- * add a className to the given elements style
+ * Adds one or more className's to the given elements style
  * @param {Element} elem
  * @param {String} className
  */
 links.Timeline.addClassName = function(elem, className) {
     var classes = elem.className.split(' ');
-    if (classes.indexOf(className) == -1) {
-        classes.push(className); // add the class to the array
+    var classesToAdd = className.split(' ');
+
+    var added = false;
+    for (var i=0; i<classesToAdd.length; i++) {
+        if (classes.indexOf(classesToAdd[i]) == -1) {
+            classes.push(classesToAdd[i]); // add the class to the array
+            added = true;
+        }
+    }
+
+    if (added) {
         elem.className = classes.join(' ');
     }
 };
 
 /**
- * add a className to the given elements style
+ * Removes one or more className's from the given elements style
  * @param {Element} elem
  * @param {String} className
  */
 links.Timeline.removeClassName = function(elem, className) {
     var classes = elem.className.split(' ');
-    var index = classes.indexOf(className);
-    if (index != -1) {
-        classes.splice(index, 1); // remove the class from the array
+    var classesToRemove = className.split(' ');
+
+    var removed = false;
+    for (var i=0; i<classesToRemove.length; i++) {
+        var index = classes.indexOf(classesToRemove[i]);
+        if (index != -1) {
+            classes.splice(index, 1); // remove the class from the array
+            removed = true;
+        }
+    }
+
+    if (removed) {
         elem.className = classes.join(' ');
     }
 };
@@ -6296,6 +6952,21 @@ links.Timeline.isArray = function (obj) {
         return true;
     }
     return (Object.prototype.toString.call(obj) === '[object Array]');
+};
+
+/**
+ * Shallow clone an object
+ * @param {Object} object
+ * @return {Object} clone
+ */
+links.Timeline.clone = function (object) {
+    var clone = {};
+    for (var prop in object) {
+        if (object.hasOwnProperty(prop)) {
+            clone[prop] = object[prop];
+        }
+    }
+    return clone;
 };
 
 /**

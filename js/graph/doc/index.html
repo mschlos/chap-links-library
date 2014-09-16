@@ -42,7 +42,7 @@
     <li><a href="#Data_Policy">Data Policy</a></li>
 </ul>
 
-<h2><a name="Overview" id="Overview"></a>Overview</h2>
+<h2 id="Overview">Overview</h2>
 <p>
     The Graph is an interactive visualization chart to draw (measurement) data in time.
     You can freely move and zoom in the graph by dragging and scrolling in the
@@ -70,7 +70,7 @@
 </p>
 
 
-<h2><a name="Example" id="Example"></a>Example</h2>
+<h2 id="Example">Example</h2>
 <p>
     Here a graph example. Click and drag to move the graph, scroll to zoom the graph.
 </p>
@@ -119,7 +119,7 @@
 
         // create data
         var d = new Date(2010, 9, 23, 20, 0, 0);
-        for (i = 0; i < 100; i++) {
+        for (var i = 0; i < 100; i++) {
           data.addRow([new Date(d), functionA(i), functionB(i)]);
           d.setMinutes(d.getMinutes() + 1);
         }
@@ -148,7 +148,7 @@
 </pre>
 
 
-<h2><a name="Loading" id="Loading"></a>Loading</h2>
+<h2 id="Loading">Loading</h2>
 <p>
     To load the Graph, download the file
     <a href="http://almende.github.com/chap-links-library/downloads.html"><code>graph.zip</code></a>,
@@ -184,7 +184,7 @@ provided with data and options.
 where data is a Google <code>DataTable</code> or a <code>JSON Object</code>,
 and options is a name-value map in the JSON format.
 
-<h2><a name="Data_Format" id="Data_Format"></a>Data Format</h2>
+<h2 id="Data_Format">Data Format</h2>
 
 <p>
     The Graph can be fed with two types of data: a Google DataTable, or a
@@ -237,17 +237,187 @@ data.addRow([new Date(2010,7,15), 12.5, 34.6]);
     </tr>
 </table>
 
-<h3>Javascript Array</h3>
+<h3>JavaScript Array</h3>
 <p>
     The Graph requires a Javascript Array with at least one dataset.
     A dataset is an Javascript Object containing two parameters: <code>label</code>
     and <code>data</code>. The label is displayed in the legend of the Graph,
-    and the data parameter contains an Array with Objects,
-    each containing two parameters: <code>date</code> and <code>value</code>.
+    and the data parameter contains an Array with Objects.
+    Optionally, a <code>type</code> parameter can be provided to the dataset,
+    denoting the type of the data.
+    Unlike the Google DataTable, a JavaScript dataset can contain different
+    data types:
+    <code>line</code> (default), <code>area</code>, or <code>event</code>.
 </p>
 
-<pre class="prettyprint lang-js">
+<h4>Data type "line"</h4>
 
+<p>
+The default type of a data set is <code>line</code>. Graph will display
+the dataset as a line, a dotted line, or dots, depending on the line style.
+The data consists of an array with objects, each object containing two
+parameters:
+</p>
+
+<table>
+    <tr>
+        <th>Name</th>
+        <th>Type</th>
+        <th>Required</th>
+        <th>Description</th>
+    </tr>
+    <tr>
+        <td>date</td>
+        <td>Date</td>
+        <td>yes</td>
+        <td>The date of the data point.</td>
+    </tr>
+    <tr>
+        <td>value</td>
+        <td>Number</td>
+        <td>yes</td>
+        <td>The value of the data point.</td>
+    </tr>
+</table>
+
+<h4>Data type "area"</h4>
+
+For data type <code>area</code>,
+data will be displayed as colored, horizontal background ranges.
+The  data consists of an array with ranges, each range containing date
+parameters <code>start</code> and <code>end</code>, and optionally a
+string parameter <code>color</code> containing a valid HTML color for an
+individual range. If an area has no color defined, the color will
+be read from the configuration parameter <code>lines[].color</code>.
+Typically, the color for a background area will be an rgba color with
+transparency, for example <code>rgba(51, 102, 204, 0.1)</code>.
+
+The data consists of an array
+with objects, where each object can contain the following parameters:
+
+<table>
+    <tr>
+        <th>Name</th>
+        <th>Type</th>
+        <th>Required</th>
+        <th>Description</th>
+    </tr>
+    <tr>
+        <td>start</td>
+        <td>Date</td>
+        <td>yes</td>
+        <td>The start date of the background area.</td>
+    </tr>
+    <tr>
+        <td>end</td>
+        <td>Date</td>
+        <td>yes</td>
+        <td>The end date of the background area.</td>
+    </tr>
+    <tr>
+        <td>text</td>
+        <td>String</td>
+        <td>no</td>
+        <td>Text displayed as a text label top left of the background area.</td>
+    </tr>
+    <tr>
+        <td>title</td>
+        <td>String</td>
+        <td>no</td>
+        <td>Text displayed when hovering the top left of the background area.</td>
+    </tr>
+    <tr>
+        <td>color</td>
+        <td>String</td>
+        <td>no</td>
+        <td>An HTML color for the line of the background area.
+            If an area has no color defined, the color will be read from
+            the configuration parameter <code>lines[].color</code>.
+            Typically, the color for a background area will be an rgba color with
+            transparency, for example <code>rgba(51, 102, 204, 0.1)</code>.</td>
+    </tr>
+    <tr>
+        <td>textColor</td>
+        <td>String</td>
+        <td>no</td>
+        <td>An HTML color for the text label of the background area.
+            If an area has no textColor defined, the textColor will be read from
+            the configuration parameter <code>lines[].textColor</code>.</td>
+    </tr>
+    <tr>
+        <td>font</td>
+        <td>String</td>
+        <td>no</td>
+        <td>The font for the text label of the background area, for example '10pt arial'.
+            If an area has no font defined, the font will be read from
+            the configuration parameter <code>lines[].font</code>.</td>
+    </tr>
+</table>
+
+
+<h4>Data type "event"</h4>
+
+Data sets of type <code>event</code> will be displayed as vertical lines.
+The data consists of an array with objects, where each object can contain the
+following parameters:
+
+<table>
+    <tr>
+        <th>Name</th>
+        <th>Type</th>
+        <th>Required</th>
+        <th>Description</th>
+    </tr>
+    <tr>
+        <td>date</td>
+        <td>Date</td>
+        <td>yes</td>
+        <td>The date of the event.</td>
+    </tr>
+    <tr>
+        <td>text</td>
+        <td>String</td>
+        <td>no</td>
+        <td>Text displayed as a text label top right of the event.</td>
+    </tr>
+    <tr>
+        <td>title</td>
+        <td>String</td>
+        <td>no</td>
+        <td>Text displayed when hovering the top of the event line.</td>
+    </tr>
+    <tr>
+        <td>color</td>
+        <td>String</td>
+        <td>no</td>
+        <td>An HTML color for the line of the event.
+            If an event has no color defined, the color will be read from
+            the configuration parameter <code>lines[].color</code>.
+            </td>
+    </tr>
+    <tr>
+        <td>textColor</td>
+        <td>String</td>
+        <td>no</td>
+        <td>An HTML color for the text label of the event.
+            If an event has no textColor defined, the textColor will be read from
+            the configuration parameter <code>lines[].textColor</code>.</td>
+    </tr>
+    <tr>
+        <td>font</td>
+        <td>String</td>
+        <td>no</td>
+        <td>The font for the text label of the event, for example '10pt arial'.
+            If an event has no font defined, the font will be read from
+            the configuration parameter <code>lines[].font</code>.</td>
+    </tr>
+</table>
+
+
+<h4>JavaScript Array example</h4>
+
+<pre class="prettyprint lang-js">
+// a line graph
 var dataset1 = {
   "label" : "Dataset A",
   "data" : [
@@ -257,6 +427,7 @@ var dataset1 = {
   ]
 };
 
+// another line graph
 var dataset2 = {
   "label" : "Dataset B",
   "data" : [
@@ -266,15 +437,26 @@ var dataset2 = {
   ]
 };
 
-var data = [dataset1, dataset2];
+// background areas
+var dataset3 = {
+  "type": "area"
+  "label" : "Background",
+  "data" : [
+    {"start": new Date(2010,7,15), "end" : new Date(2010,7,17) },
+    {"start": new Date(2010,7,19), "end" : new Date(2010,7,24), "color": "rgba(51, 102, 204, 0.1)"},
+    // ...
+  ]
+};
+
+// put all datasets in one array
+var data = [dataset1, dataset2, dataset3];
 </pre>
 
+
 <p>
-
-
 </p>
 
-<h2><a name="Configuration_Options" id="Configuration_Options"></a>Configuration Options</h2>
+<h2 id="Configuration_Options">Configuration Options</h2>
 
 <p>
     Options can be used to customize the graph. Options are defined as a JSON object.
@@ -341,25 +523,6 @@ var options = {
 </tr>
 
 <tr>
-    <td>intervalMax</td>
-    <td>Number</td>
-    <td>315360000000000</td>
-    <td>Set a maximum interval for the visible range in milliseconds.
-        It will not be possible to zoom out further than this maximum.
-        Default value equals about 10000 years.
-    </td>
-</tr>
-
-<tr>
-    <td>intervalMin</td>
-    <td>Number</td>
-    <td>10</td>
-    <td>Set a minimum interval for the visible range in milliseconds.
-        It will not be possible to zoom in further than this minimum.
-    </td>
-</tr>
-
-<tr>
     <td>legend.toggleVisibility</td>
     <td>boolean</td>
     <td>false</td>
@@ -391,7 +554,7 @@ var options = {
     <td>{ }</td>
     <td>An object with styles applied to all lines: color, width,
         radius, style, legend.
-        See the table below.</td>
+        See the <a href="#Line">table Line</a>.</td>
 </tr>
 <tr>
     <td>lines</td>
@@ -400,7 +563,7 @@ var options = {
     <td>An array with specific styles for the individual lines: color, width,
         radius, style, legend. These styles override the styles set in the option
         <code>line</code>.
-        See the table below.</td>
+        See the <a href="#Line">table Line</a>.</td>
 </tr>
 
 <tr>
@@ -465,11 +628,28 @@ var options = {
 
 <tr>
     <td>tooltip</td>
-    <td>boolean</td>
+    <td>boolean | function</td>
     <td>true</td>
-    <td>Show a tooltip containing date and value when hovering over a function.</td>
+    <td>Show a tooltip containing date and value when hovering over a function.
+        The contents of the tooltip can be customized by providing a callback
+        function as <code>tooltip</code>. In this case the function is called
+        with an object containing parameters <code>date</code>,
+        <code>text</code>, <code>line</code>, <code>color</code>,
+        <code>radius</code> as argument,
+        and must return a string which may contain HTML.
+    </td>
 </tr>
 
+<tr>
+    <td>vAreas</td>
+    <td>Array with objects</td>
+    <td>none</td>
+    <td>
+        Create vertical colored background areas. The areas fill the full width
+        of the graph, and are vertically limited between a provided start and
+        end. See <a href="#Background_areas">table Background Area</a>.
+    </td>
+</tr>
 <tr>
     <td>vEnd</td>
     <td>number</td>
@@ -526,8 +706,28 @@ var options = {
     </td>
 </tr>
 
+<tr>
+    <td>zoomMax</td>
+    <td>Number</td>
+    <td>315360000000000</td>
+    <td>Set a maximum zoom interval for the visible range in milliseconds.
+        It will not be possible to zoom out further than this maximum.
+        Default value equals about 10000 years.
+    </td>
+</tr>
+
+<tr>
+    <td>zoomMin</td>
+    <td>Number</td>
+    <td>10</td>
+    <td>Set a minimum zoom interval for the visible range in milliseconds.
+        It will not be possible to zoom in further than this minimum.
+    </td>
+</tr>
+
 </table>
 
+<h3 id="Line">Line</h3>
 <p>
     With the options <code>line</code> and <code>lines</code>, styles can be
     specified for respectively all lines and individual lines.
@@ -591,10 +791,72 @@ var options = {
             which creates checkboxes to toggle the visibility of a line in the legend.
         </td>
     </tr>
+
+    <tr>
+        <td>textColor</td>
+        <td>string</td>
+        <td>#4D4D4D</td>
+        <td>A string with an HTML color for text labels. Only applicable for
+            data sets of type <code>area</code> and <code>event</code>.</td>
+    </tr>
+    <tr>
+        <td>font</td>
+        <td>string</td>
+        <td>10pt arial</td>
+        <td>The font for text labels. Only applicable for data sets
+            of type <code>area</code> and <code>event</code>.</td>
+    </tr>
+</table>
+
+<h3 id="Background_areas">Background areas</h3>
+<p>
+    With the option <code>vAreas</code>, vertical colored background areas can
+    be created. The areas fill the full width of the graph, and are vertically
+    limited between a provided start and end.
+    The following styles are available:
+</p>
+
+<table>
+    <tr>
+        <th>Name</th>
+        <th>Type</th>
+        <th>Default</th>
+        <th>Description</th>
+    </tr>
+    <tr>
+        <td>className</td>
+        <td>string</td>
+        <td>none</td>
+        <td>A class name which can be used to give a background area custom css
+            styling.</td>
+    </tr>
+    <tr>
+        <td>color</td>
+        <td>string</td>
+        <td>none</td>
+        <td>A string with an HTML color, for example <code>red</code>,
+            <code>#FF0000</code>, or <code>rgba(255,0,0,0.1)</code>.
+    </tr>
+    <tr>
+        <td>start</td>
+        <td>number</td>
+        <td>null</td>
+        <td>The start of the background area on the vertical axis. If null
+            (default), the background area will be drawn from the bottom of the
+            graph to the end of the background area.</td>
+    </tr>
+    <tr>
+        <td>end</td>
+        <td>number</td>
+        <td>null</td>
+        <td>The end of the background area on the vertical axis. If null
+            (default), the background area will be drawn from the start of the
+            background area to the top of the graph.</td>
+    </tr>
 </table>
 
 
-<h2><a name="Methods" id="Methods"></a>Methods</h2>
+<h2 id="Methods">Methods</h2>
 <p>
     The Graph supports the following methods.
 </p>
@@ -700,21 +962,22 @@ var options = {
         <td>none</td>
         <td>Move the visible range such that the current time is located in the
             center of the graph.
-            This method does not trigger a <code>rangechange</code> event.</td>
+            This method does not trigger a <code>rangechange</code> event.
+        </td>
     </tr>
 
     <tr>
         <td>setVisibleChartRangeAuto()</td>
         <td>none</td>
         <td>Adjust the visible time range to fit all data.
-            This method does not trigger a <code>rangechange</code> event.</td>
+            This method does not trigger a <code>rangechange</code> event.
         </td>
     </tr>
 
 
 </table>
 
-<h2><a name="Events" id="Events"></a>Events</h2>
+<h2 id="Events">Events</h2>
 
 <p>
     The Graph fires events after the visible range changed.
@@ -793,7 +1056,7 @@ google.visualization.events.addListener(mygraph, 'rangechange', onrangechange);
     </tr>
 </table>
 
-<h2><a name="Styles" id="Styles"></a>Styles</h2>
+<h2 id="Styles">Styles</h2>
 
 <p>
     All parts of the Graph have a class name and a default css style.
@@ -869,7 +1132,9 @@ div.graph-canvas {
         <td>The axis has two grid lines: minor and major. When the scale is in days,
             each day gets a minor grid line, and each month a major grid line.</td>
         <td>
-            border-color: #e5e5e5;
+            border-color: #999999;<br>
+            filter: alpha(opacity=25);<br>
+            opacity: 0.25;<br>
         </td>
     </tr>
 
@@ -877,7 +1142,9 @@ div.graph-canvas {
         <td>div.graph-axis-grid-major</td>
         <td>See <code>div.graph-axis-grid-major</code></td>
         <td>
-            border-color: #bfbfbf;
+            border-color: black;<br>
+            filter: alpha(opacity=25);<br>
+            opacity: 0.25;<br>
         </td>
     </tr>
 
@@ -885,10 +1152,11 @@ div.graph-canvas {
         <td>div.graph-axis-grid-vertical</td>
         <td>The grid lines on the vertical axis.</td>
         <td>
-            border-color: #bfbfbf;
+            border-color: black;<br>
+            filter: alpha(opacity=25);<br>
+            opacity: 0.25;<br>
         </td>
     </tr>
-
 
     <tr>
         <td>div.graph-axis-button-menu</td>
@@ -919,6 +1187,20 @@ div.graph-canvas {
         <td>The zoom buttons when hovered</td>
         <td>
             background-color: gray;
+        </td>
+    </tr>
+
+
+    <tr>
+        <td>div.graph-background-area</td>
+        <td>A vertical background area, created using option
+            <code>vAreas</code>.</td>
+        <td>
+            position: absolute;<br>
+            left: 0;<br>
+            top: 0;<br>
+            width: 100%;<br>
+            height: 0;<br>
         </td>
     </tr>
 
@@ -1027,7 +1309,7 @@ div.graph-canvas {
     </tr>
 </table>
 
-<h2><a name="Data_Policy" id="Data_Policy"></a>Data Policy</h2>
+<h2 id="Data_Policy">Data Policy</h2>
 <p>
     All code and data are processed and rendered in the browser. No data is sent to any server.
 </p>

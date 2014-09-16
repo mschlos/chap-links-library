@@ -116,14 +116,15 @@
                 axisOnTop: true,
                 // groupsWidth : "200px",
                 groupsChangeable : true,
-                groupsOnRight: false
+                groupsOnRight: false,
+                stackEvents: false
             };
 
             // Instantiate our timeline object.
-            timeline = new links.Timeline(document.getElementById('mytimeline'));
+            timeline = new links.Timeline(document.getElementById('mytimeline'), options);
 
             // Draw our timeline with the created data and options
-            timeline.draw(data, options);
+            timeline.draw(data);
         }
     </script>
 </head>

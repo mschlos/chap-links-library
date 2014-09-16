@@ -25,53 +25,12 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  *
- * Copyright © 2010-2012 Almende B.V.
+ * Copyright (C) 2010-2013 Almende B.V.
  *
  * @author 	Jos de Jong, <jos@almende.org>
- * @date    2013-03-04
- * @version 1.2.5
+ * @date    2013-08-20
+ * @version 1.3.2
  */
-
-
-/*
- TODO
- add an option vZoomable and vMovable to fix vertical zooming/moving
-
- when subsampling, always take the same start - else it looks like the data is jumping
- implement option backgroundColor like all other Google Visualizations (and see Links.Network)
- css: make two style groups: haxis and vaxis
-
- add an option to select/deselect all functions in the legend
- add possibility to have a horizontal axis with numbers instead of dates
- recalculate min and max scale after each zoom action too?
-
- add a line style circle? square? triange? custom color for the circle or dot?
- enable highlighting one of the graphs (select one graph)
-
- BUGS
- when redrawing while moving the graph, the axis and graph do not move exactly wit the same speed
- when zooming in on on line segment, it is not drawn correctly (disappears)
- IE: problems when zooming into the millisecond range (round off errors somehow?)
- IE:
- unstable for >10000 datapoints. Maybe due to conversion to VML by excanvas? Or a bug in my code?
-
- Safari:
- sometimes, the canvas is not cleared completely (which is fixed after another redraw)
- --> test if fixed now (by clearing before resizing)
-
- the text on the vertical axis has round off errors when dealing with very small scale (1e-6)
-
- Documentation
- http://codingforums.com/showthread.php?t=99027
- http://bytes.com/topic/javascript/answers/160118-creating-xhtml-iframe
- http://www.kevlindev.com/tutorials/basics/shapes/js_dom/index.htm
- http://adomas.org/javascript-mouse-wheel/
- http://www.brainjar.com/dhtml/drag/
- http://dev-tips.com/demo/css3_circles.html
-
- */
-
-
 
 /**
  * Declare a unique namespace for CHAP's Common Hybrid Visualisation Library,
@@ -188,8 +147,8 @@ links.Graph.prototype.draw = function(data, options) {
         if (options.end != undefined)           this.end = options.end;
         if (options.min != undefined)           this.min = options.min;
         if (options.max != undefined)           this.max = options.max;
-        if (options.intervalMin != undefined)   this.intervalMin = options.intervalMin;
-        if (options.intervalMax != undefined)   this.intervalMax = options.intervalMax;
+        if (options.zoomMin != undefined)       this.zoomMin = options.zoomMin;
+        if (options.zoomMax != undefined)       this.zoomMax = options.zoomMax;
         if (options.scale != undefined)         this.scale = options.scale;
         if (options.step != undefined)          this.step = options.step;
         if (options.autoDataStep != undefined)  this.autoDataStep = options.autoDataStep;
@@ -206,9 +165,25 @@ links.Graph.prototype.draw = function(data, options) {
         if (options.vMax != undefined)          this.vMaxFixed = options.vMax;
         if (options.vStep != undefined)         this.vStepSize = options.vStep;
         if (options.vPrettyStep != undefined)   this.vPrettyStep = options.vPrettyStep;
+        if (options.vAreas != undefined)        this.vAreas = options.vAreas;
 
         if (options.legend != undefined)        this.legend = options.legend;  // can contain legend.width
-        if (options.tooltip != undefined)       this.showTooltip = options.tooltip;
+        if (options.tooltip != undefined) {
+            this.showTooltip = (options.tooltip != false);
+            if (typeof options.tooltip === 'function') {
+                this.tooltipFormatter = options.tooltip;
+            }
+        }
+
+        // check for deprecated options
+        if (options.intervalMin != undefined) {
+            this.zoomMin = options.intervalMin;
+            console.log('WARNING: Option intervalMin is deprecated. Use zoomMin instead');
+        }
+        if (options.intervalMax != undefined) {
+            this.zoomMax = options.intervalMax;
+            console.log('WARNING: Option intervalMax is deprecated. Use zoomMax instead');
+        }
 
         // TODO: add options to set the horizontal and vertical range
     }
@@ -216,8 +191,8 @@ links.Graph.prototype.draw = function(data, options) {
     // apply size and time range
     var redrawNow = false;
     this.setSize(this.width, this.height);
-    this.setVisibleChartRange(this.start, this.end, redrawNow);
 
+    this.setVisibleChartRange(this.start, this.end, redrawNow);
     if (this.scale && this.step) {
         this.hStep.setScale(this.scale, this.step);
     }
@@ -261,6 +236,7 @@ links.Graph.prototype._readData = function(data) {
 
             var graph = {
                 "label": data.getColumnLabel(col),
+                "type": undefined,
                 "dataRange": undefined,
                 "rowRange": undefined,
                 "visibleRowRange": undefined,
@@ -280,8 +256,16 @@ links.Graph.prototype._readData = function(data) {
     for (var i = 0, len = this.data.length; i < len; i++) {
         var graph = this.data[i];
 
+        var fields;
+        if (graph.type == 'area') {
+            fields = ['start', 'end']; // area
+        }
+        else {
+            fields = ['date']; // 'line' or 'event'
+        }
+
         graph.dataRange = this._getDataRange(graph.data);
-        graph.rowRange = this._getRowRange(graph.data);
+        graph.rowRange = this._getRowRange(graph.data, fields);
     }
 };
 
@@ -812,7 +796,7 @@ links.Graph.StepDate.prototype.addZeros = function(value, len) {
 links.Graph.StepNumber = function (start, end, step, prettyStep) {
     this._start = 0;
     this._end = 0;
-    this.step_ = 1;
+    this._step = 1;
     this.prettyStep = true;
     this.precision = 5;
 
@@ -848,12 +832,12 @@ links.Graph.StepNumber.prototype.setStep = function(step, prettyStep) {
 
     this.prettyStep = prettyStep;
     if (this.prettyStep == true)
-        this.step_ = links.Graph.StepNumber._calculatePrettyStep(step);
+        this._step = links.Graph.StepNumber._calculatePrettyStep(step);
     else
-        this.step_ = step;
+        this._step = step;
 
 
-    if (this._end / this.step_ > Math.pow(10, this.precision)) {
+    if (this._end / this._step > Math.pow(10, this.precision)) {
         this.precision = undefined;
     }
 };
@@ -904,7 +888,7 @@ links.Graph.StepNumber.prototype.getCurrent = function () {
  * @return {number} current step size
  */
 links.Graph.StepNumber.prototype.getStep = function () {
-    return this.step_;
+    return this._step;
 };
 
 /**
@@ -913,7 +897,7 @@ links.Graph.StepNumber.prototype.getStep = function () {
  */
 links.Graph.StepNumber.prototype.start = function() {
     if (this.prettyStep)
-        this._current = this._start - this._start % this.step_;
+        this._current = this._start - this._start % this._step;
     else
         this._current = this._start;
 };
@@ -922,7 +906,7 @@ links.Graph.StepNumber.prototype.start = function() {
  * Do a step, add the step size to the current value
  */
 links.Graph.StepNumber.prototype.next = function () {
-    this._current += this.step_;
+    this._current += this._step;
 };
 
 /**
@@ -968,7 +952,7 @@ links.Graph.prototype.setAutoScale = function(enable) {
  * @return {string} the string value of x, followed by the suffix "px"
  */
 links.Graph.px = function(x) {
-    return x + "px";
+    return Math.round(x) + "px";
 };
 
 
@@ -1005,7 +989,7 @@ links.Graph.prototype._screenToTime = function(x) {
  *                      with the given date.
  */
 links.Graph.prototype.timeToScreen = function(time) {
-    return (time.valueOf() - this.ttsOffset) * this.ttsFactor;
+    return (time.valueOf() - this.ttsOffset) * this.ttsFactor || null;
 };
 
 /**
@@ -1036,13 +1020,13 @@ links.Graph.prototype._create = function () {
     this.main.appendChild(this.frame);
 
     // create a canvas background, which can be used to give the canvas a colored background
-    this.frame.canvasBackground = document.createElement("DIV");
-    this.frame.canvasBackground.className = "graph-canvas";
-    this.frame.canvasBackground.style.position = "relative";
-    this.frame.canvasBackground.style.left = links.Graph.px(0);
-    this.frame.canvasBackground.style.top = links.Graph.px(0);
-    this.frame.canvasBackground.style.width = "100%";
-    this.frame.appendChild(this.frame.canvasBackground);
+    this.frame.background = document.createElement("DIV");
+    this.frame.background.className = "graph-canvas";
+    this.frame.background.style.position = "relative";
+    this.frame.background.style.left = links.Graph.px(0);
+    this.frame.background.style.top = links.Graph.px(0);
+    this.frame.background.style.width = "100%";
+    this.frame.appendChild(this.frame.background);
 
     // create a div to contain the grid lines of the vertical axis
     this.frame.vgrid = document.createElement("DIV");
@@ -1069,7 +1053,7 @@ links.Graph.prototype._create = function () {
     this.frame.canvas.axis.style.left = links.Graph.px(0);
     this.frame.canvas.axis.style.top = links.Graph.px(0);
     this.frame.canvas.appendChild(this.frame.canvas.axis);
-    this.majorLabels = new Array();
+    this.majorLabels = [];
 
     // create the graph canvas (HTML canvas element)
     this.frame.canvas.graph = document.createElement( "canvas" );
@@ -1091,12 +1075,14 @@ links.Graph.prototype._create = function () {
     var onmousewheel = function (event) {me._onWheel(event);};
     var ontouchstart = function (event) {me._onTouchStart(event);};
     if (this.showTooltip) {
+        var onmouseout = function (event) {me._onMouseOut(event);};
         var onmousehover = function (event) {me._onMouseHover(event);};
     }
 
     // TODO: these events are never cleaned up... can give a "memory leakage"?
     links.Graph.addEventListener(this.frame, "mousedown", onmousedown);
     links.Graph.addEventListener(this.frame, "mousemove", onmousehover);
+    links.Graph.addEventListener(this.frame, "mouseout", onmouseout);
     links.Graph.addEventListener(this.frame, "mousewheel", onmousewheel);
     links.Graph.addEventListener(this.frame, "touchstart", ontouchstart);
     links.Graph.addEventListener(this.frame, "mousedown", function() {me._checkSize();});
@@ -1182,11 +1168,11 @@ links.Graph.prototype._zoom = function(zoomFactor, zoomAroundDate) {
      */
 
     var interval = (newEnd.valueOf() - newStart.valueOf());
-    var intervalMin = Number(this.intervalMin) || 10;
-    if (intervalMin < 10) {
-        intervalMin = 10;
+    var zoomMin = Number(this.zoomMin) || 10;
+    if (zoomMin < 10) {
+        zoomMin = 10;
     }
-    if (interval >= intervalMin) {
+    if (interval >= zoomMin) {
         // apply new dates
         this._applyRange(newStart, newEnd, zoomAroundDate);
 
@@ -1225,7 +1211,9 @@ links.Graph.prototype._move = function(moveFactor) {
  * range.
  * @param {Date} start
  * @param {Date} end
- * @param {Date}   zoomAroundDate  Optional. Date around which will be zoomed.
+ * @param {Date}   zoomAroundDate   Optional. Date around which will be zoomed
+ *                                  When needed to satisfy a min/max zoom level
+ *                                  or range.
  */
 links.Graph.prototype._applyRange = function (start, end, zoomAroundDate) {
     // calculate new start and end value
@@ -1235,16 +1223,16 @@ links.Graph.prototype._applyRange = function (start, end, zoomAroundDate) {
 
     // determine maximum and minimum interval
     var year = 1000 * 60 * 60 * 24 * 365;
-    var intervalMin = Number(this.intervalMin) || 10;
-    if (intervalMin < 10) {
-        intervalMin = 10;
+    var zoomMin = Number(this.zoomMin) || 10;
+    if (zoomMin < 10) {
+        zoomMin = 10;
     }
-    var intervalMax = Number(this.intervalMax) || 10000 * year;
-    if (intervalMax > 10000 * year) {
-        intervalMax = 10000 * year;
+    var zoomMax = Number(this.zoomMax) || 10000 * year;
+    if (zoomMax > 10000 * year) {
+        zoomMax = 10000 * year;
     }
-    if (intervalMax < intervalMin) {
-        intervalMax = intervalMin;
+    if (zoomMax < zoomMin) {
+        zoomMax = zoomMin;
     }
 
     // determine min and max date value
@@ -1256,11 +1244,11 @@ links.Graph.prototype._applyRange = function (start, end, zoomAroundDate) {
             var day = 1000 * 60 * 60 * 24;
             max = min + day;
         }
-        if (intervalMax > (max - min)) {
-            intervalMax = (max - min);
+        if (zoomMax > (max - min)) {
+            zoomMax = (max - min);
         }
-        if (intervalMin > (max - min)) {
-            intervalMin = (max - min);
+        if (zoomMin > (max - min)) {
+            zoomMin = (max - min);
         }
     }
 
@@ -1271,16 +1259,16 @@ links.Graph.prototype._applyRange = function (start, end, zoomAroundDate) {
 
     // prevent too small scale
     // TODO: IE has problems with milliseconds
-    if (interval < intervalMin) {
-        var diff = (intervalMin - interval);
+    if (interval < zoomMin) {
+        var diff = (zoomMin - interval);
         var f = zoomAroundDate ? (zoomAroundDate.valueOf() - startValue) / interval : 0.5;
         startValue -= Math.round(diff * f);
         endValue   += Math.round(diff * (1 - f));
     }
 
     // prevent too large scale
-    if (interval > intervalMax) {
-        var diff = (interval - intervalMax);
+    if (interval > zoomMax) {
+        var diff = (interval - zoomMax);
         var f = zoomAroundDate ? (zoomAroundDate.valueOf() - startValue) / interval : 0.5;
         startValue += Math.round(diff * f);
         endValue   -= Math.round(diff * (1 - f));
@@ -1430,11 +1418,23 @@ links.Graph.prototype._initSize = function() {
     // retrieve the data range (this can take some time for large amounts of data)
     //this.dataRange = this._getDataRange(this.data[0]); // TODO
     if (this.data.length > 0) {
-        this.verticalRange = this.data[0].dataRange;
-        for (var i = 0, len = this.data.length; i < len; i++) {
-            this.verticalRange.min = Math.min(this.verticalRange.min, this.data[i].dataRange.min);
-            this.verticalRange.max = Math.max(this.verticalRange.max, this.data[i].dataRange.max);
+        var verticalRange = null;
+        for (var i = 0, imax = this.data.length; i < imax; i++) {
+            var dataRange = this.data[i].dataRange;
+            if (dataRange) {
+                if (verticalRange) {
+                    verticalRange.min = Math.min(verticalRange.min, dataRange.min);
+                    verticalRange.max = Math.max(verticalRange.max, dataRange.max);
+                }
+                else {
+                    verticalRange = {
+                        min: dataRange.min,
+                        max: dataRange.max
+                    };
+                }
+            }
         }
+        this.verticalRange = verticalRange || {"min" : -10, "max" : 10};
     }
     else {
         this.verticalRange = {"min" : -10, "max" : 10};
@@ -1478,7 +1478,7 @@ links.Graph.prototype._redrawHorizontalAxis = function () {
 
     this.frame.canvas.style.width = links.Graph.px(this.frame.clientWidth);
     this.frame.canvas.style.height = links.Graph.px(this.axisOffset);
-    this.frame.canvasBackground.style.height = links.Graph.px(this.axisOffset);
+    this.frame.background.style.height = links.Graph.px(this.axisOffset);
 
     this._calcConversionFactor();
 
@@ -1514,7 +1514,9 @@ links.Graph.prototype._redrawHorizontalAxis = function () {
     this.frame.canvas.appendChild(this.leftMajorLabel);
 
     this.hStep.start();
-    while (!this.hStep.end()) {
+    var count = 0;
+    while (!this.hStep.end() && count < 200) {
+        count++;
         var x = this.timeToScreen(this.hStep.getCurrent());
         var hvline = this.hStep.isMajor() ? this.frame.clientHeight :
             (this.axisOffset + this.axisTextMinorHeight);
@@ -1638,7 +1640,8 @@ links.Graph.prototype._redrawAxisLeftMajorLabel = function() {
  * Draw the vertical axis in the graph
  */
 links.Graph.prototype._redrawVerticalAxis = function () {
-    var testStart = new Date(); // TODO: cleanup
+    //var testStart = new Date(); // TODO: cleanup
+    var i;
 
     if (!this.main.axisLeft) {
         // create the left vertical axis
@@ -1730,22 +1733,51 @@ links.Graph.prototype._redrawVerticalAxis = function () {
         // TODO: make a more neat solution for this.yToScreen()
     }
     else {
-        this.yToScreen = function (y) {
+        this.yToScreen = function () {
             return 0;
         };
-        this.screenToY = function (ys) {
+        this.screenToY = function () {
             return 0;
         };
+    }
+
+    if (this.vAreas && !this.frame.background.childNodes.length) {
+        // create vertical background areas
+        for (i = 0; i < this.vAreas.length; i++) {
+            var area = this.vAreas[i];
+            var divArea = document.createElement('DIV');
+            divArea.className = 'graph-background-area';
+            divArea.start = (area.start != null) ? Number(area.start) : null;
+            divArea.end = (area.end != null) ? Number(area.end) : null;
+            if (area.className) {
+                divArea.className += ' ' + area.className;
+            }
+            if (area.color) {
+                divArea.style.backgroundColor = area.color;
+            }
+            this.frame.background.appendChild(divArea);
+        }
+    }
+    if (this.frame.background.childNodes.length) {
+        // reposition vertical background areas
+        var childs = this.frame.background.childNodes;
+        for (i = 0; i < childs.length; i++) {
+            var child = childs[i];
+            var areaStart = this.yToScreen(child.start != null ? Math.max(child.start, this.vStart) : this.vStart);
+            var areaEnd = this.yToScreen(child.end != null ? Math.min(child.end, this.vEnd) : this.vEnd);
+            child.style.top = areaEnd + 'px';
+            child.style.height = Math.max(areaStart - areaEnd, 0) + 'px';
+        }
     }
 
     var maxWidth = 0;
+    var count = 0;
     this.vStep.start();
-
     if ( this.yToScreen(this.vStep.getCurrent()) > this.axisOffset) {
         this.vStep.next();
     }
-
-    while(!this.vStep.end()) {
+    while(!this.vStep.end() && count < 100) {
+        count++;
         var y = this.vStep.getCurrent();
         var yScreen = this.yToScreen(y);
 
@@ -1802,7 +1834,6 @@ links.Graph.prototype._redrawVerticalAxis = function () {
 
     // right align all elements
     maxWidth += this.main.zoomButtons.clientWidth; // append width of the zoom buttons
-    var maxWidthPx = links.Graph.px(maxWidth);
     for (i = 0; i < this.main.axisLeft.childNodes.length; i++) {
         this.main.axisLeft.childNodes[i].style.left =
             links.Graph.px(maxWidth - this.main.axisLeft.childNodes[i].offsetWidth);
@@ -1819,8 +1850,7 @@ links.Graph.prototype._redrawVerticalAxis = function () {
     this.main.axisRight.style.top = links.Graph.px(this.mainPadding);
     this.main.axisRight.style.height = links.Graph.px(this.axisOffset + 1);
 
-
-    var testEnd = new Date(); // TODO: cleanup
+    //var testEnd = new Date(); // TODO: cleanup
     //document.title += " v:" +(testEnd - testStart) + "ms"; // TODO: cleanup
 };
 
@@ -1829,14 +1859,12 @@ links.Graph.prototype._redrawVerticalAxis = function () {
  * Draw all events that are provided in the data on the graph
  */
 links.Graph.prototype._redrawData = function() {
-    var testStart = new Date(); // TODO: cleanup
-
     this._calcConversionFactor();
 
     // determine the size of the graph
     var start = this._screenToTime(-this.axisMargin);
     var end = this._screenToTime(this.frame.clientWidth + this.axisMargin);
-    var width = this.frame.clientWidth + 2*this.axisMargin;
+    //var width = this.frame.clientWidth + 2*this.axisMargin;
     /*
      // TODO: use axisMargin?
      var start = this._screenToTime(0);
@@ -1855,11 +1883,11 @@ links.Graph.prototype._redrawData = function() {
     // resize the graph element
     var left = this.timeToScreen(start);
     var right = this.timeToScreen(end);
-    var width = right - left;
+    var graphWidth = right - left;
     var height = this.axisOffset;
 
     graph.style.left = links.Graph.px(left);
-    graph.width = width;
+    graph.width = graphWidth;
     graph.height = height;
 
     var offset = parseFloat(graph.style.left);
@@ -1868,86 +1896,136 @@ links.Graph.prototype._redrawData = function() {
     for (var col = 0, colCount = this.data.length; col < colCount; col++) {
         var style = this._getLineStyle(col);
         var color = this._getLineColor(col);
+        var textColor = this._getTextColor(col);
+        var font = this._getFont(col);
         var width = this._getLineWidth(col);
         var radius = this._getLineRadius(col);
         var visible = this._getLineVisible(col);
+        var type = this.data[col].type || 'line';
         var data = this.data[col].data;
+        var d;
 
         // determine the first and last row inside the visible area
-        var rowRange = this._getVisbleRowRange(data, start, end,
+        var rowRange = this._getVisbleRowRange(data, start, end, type,
             this.data[col].visibleRowRange);
         this.data[col].visibleRowRange = rowRange;
         var rowStep = this._calculateRowStep(rowRange);
 
-        if (visible) {
-            if (style == "line" || style == "dot-line") {
-                // draw line
-                ctx.strokeStyle = color;
-                ctx.lineWidth = width;
+        if (visible && rowRange) {
+            switch (type) {
+                case 'line':
+                    if (style == "line" || style == "dot-line") {
+                        // draw line
+                        ctx.strokeStyle = color;
+                        ctx.lineWidth = width;
 
-                ctx.beginPath();
-                var row = rowRange.start;
-                while (row <= rowRange.end) {
-                    // find the first data row with a non-null value
-                    while (row <= rowRange.end && data[row].value == null) {
-                        row += rowStep;
-                    }
-                    if (row <= rowRange.end) {
-                        // move to the first non-null data point
-                        value = data[row].value;
-                        var x = this.timeToScreen(data[row].date) - offset;
-                        var y = this.yToScreen(value);
-                        ctx.moveTo(x, y);
+                        ctx.beginPath();
+                        var row = rowRange.start;
+                        while (row <= rowRange.end) {
+                            // find the first data row with a non-null value
+                            while (row <= rowRange.end && data[row].value == null) {
+                                row += rowStep;
+                            }
+                            if (row <= rowRange.end) {
+                                // move to the first non-null data point
+                                value = data[row].value;
+                                var x = this.timeToScreen(data[row].date) - offset;
+                                var y = this.yToScreen(value);
+                                ctx.moveTo(x, y);
+
+                                /* TODO: implement fill style
+                                 ctx.moveTo(x, this.yToScreen(0));
+                                 ctx.lineTo(x, y);
+                                 */
+                                row += rowStep;
+                            }
+
+                            // draw lines as long as data values are not null
+                            while (row <= rowRange.end && (value = data[row].value) != null) {
+                                x = this.timeToScreen(data[row].date) - offset;
+                                y = this.yToScreen(value);
+                                ctx.lineTo(x, y);
+                                row += rowStep;
+                            }
+
+                            /* TODO: implement fill style
+                             ctx.lineTo(x, this.yToScreen(0));
+                             */
+                        }
 
                         /* TODO: implement fill style
-                         ctx.moveTo(x, this.yToScreen(0));
-                         ctx.lineTo(x, y);
+                         ctx.fillStyle = "rgba(255,255,0, 0.5)";
+                         ctx.fill();
                          */
-                        row += rowStep;
+
+                        ctx.stroke();
                     }
 
-                    // draw lines as long as data values are not null
-                    while (row <= rowRange.end && (value = data[row].value) != null) {
-                        x = this.timeToScreen(data[row].date) - offset;
-                        y = this.yToScreen(value);
-                        ctx.lineTo(x, y);
-                        row += rowStep;
+                    if (type == 'line' && (style == "dot" || style == "dot-line")) {
+                        // draw dots
+                        var diameter = 2 * radius;
+                        ctx.fillStyle = color;
+
+                        for (row = rowRange.start; row <= rowRange.end; row += rowStep) {
+                            var value = data[row].value;
+                            if (value != null) {
+                                x = this.timeToScreen(data[row].date) - offset;
+                                y = this.yToScreen(value);
+                                ctx.fillRect(x - radius, y - radius, diameter, diameter);
+                            }
+                        }
                     }
+                    break;
 
-                    /* TODO: implement fill style
-                     ctx.lineTo(x, this.yToScreen(0));
-                     */
-                }
+                case 'area':
+                    // draw background area
+                    for (row = rowRange.start; row <= rowRange.end; row += rowStep) {
+                        d = data[row];
+                        ctx.fillStyle = d.color || color;
 
-                /* TODO: implement fill style
-                 ctx.fillStyle = "rgba(255,255,0, 0.5)";
-                 ctx.fill();
-                 */
+                        var xStart = this.timeToScreen(d.start) - offset;
+                        var yStart = this.timeToScreen(d.end) - offset;
+                        ctx.fillRect(xStart, 0, yStart - xStart, height);
 
-                ctx.stroke();
-            }
-
-            if (style == "dot" || style == "dot-line") {
-                // draw dots
-                var diameter = 2 * radius;
-                ctx.fillStyle = color;
-
-                ctx.beginPath();
-                for (row = rowRange.start; row <= rowRange.end; row += rowStep) {
-                    var value = data[row].value;
-                    if (value != null) {
-                        x = this.timeToScreen(data[row].date) - offset;
-                        y = this.yToScreen(value);
-                        ctx.fillRect(x - radius, y - radius, diameter, diameter);
+                        if (d.text) {
+                            // draw text
+                            ctx.font = d.font || font;
+                            ctx.textAlign = 'left';
+                            ctx.textBaseline = 'top';
+                            ctx.fillStyle = d.textColor || textColor;
+                            ctx.fillText(d.text, xStart + 2, 0);
+                        }
                     }
-                }
-                ctx.stroke();
+                    break;
+
+                case 'event':
+                    // draw event background area
+                    for (row = rowRange.start; row <= rowRange.end; row += rowStep) {
+                        d = data[row];
+                        ctx.fillStyle = d.color || color;
+
+                        // area with a start only
+                        var dWidth = d.width || width;
+                        xStart = this.timeToScreen(d.date) - offset;
+                        ctx.fillRect(xStart - dWidth / 2, 0, dWidth, height);
+
+                        if (d.text) {
+                            // draw text
+                            ctx.font = d.font || font;
+                            ctx.textAlign = 'left';
+                            ctx.textBaseline = 'top';
+                            ctx.fillStyle = d.textColor || textColor;
+                            ctx.fillText(d.text, xStart + dWidth / 2 + 2, 0);
+                        }
+                    }
+                    break;
+
+                default:
+                    throw new Error('Unknown type of dataset "' + type + '". ' +
+                        'Choose "line" or "area"');
             }
         }
     }
-
-    var testEnd = new Date(); // TODO: cleanup
-    // console.log("redraw took " + (testEnd - testStart) + " milliseconds"); // TODO: cleanup
 };
 
 /**
@@ -1993,7 +2071,7 @@ links.Graph.prototype._redrawDataTooltip = function () {
             var radius = dataPoint.radius || 4;
             var color = dataPoint.color || '#4d4d4d';
             var left = this.timeToScreen(dataPoint.date) + offset;
-            var top = this.yToScreen(dataPoint.value);
+            var top = (dataPoint.value != undefined) ? this.yToScreen(dataPoint.value) : 16;
 
             if (!dot) {
                 dot = document.createElement('div');
@@ -2029,12 +2107,27 @@ links.Graph.prototype._redrawDataTooltip = function () {
             dot.style.borderWidth = radius + 'px';
             dot.style.marginLeft = -radius + 'px';
             dot.style.marginTop = -radius + 'px';
+            dot.style.display = dataPoint.title ? 'none': '';
 
-            label.innerHTML = '<table>' +
-                '<tr><td>Date:</td><td>' + dataPoint.date + '</td></tr>' +
-                '<tr><td>Value:</td><td>' + dataPoint.value.toPrecision(4) + '</td></tr>' +
-                '</table>';
-            label.style.color = color;
+            var html;
+            if (this.tooltipFormatter) {
+                // custom format function
+                html = this.tooltipFormatter(dataPoint);
+            }
+            else {
+                html = '<table style="color: ' + color + '">';
+                if (dataPoint.title) {
+                    html += '<tr><td>' + dataPoint.title + '</td></tr>';
+                }
+                else {
+                    html += '<tr><td>Date:</td><td>' + dataPoint.date + '</td></tr>';
+                    if (dataPoint.value != undefined) {
+                        html += '<tr><td>Value:</td><td>' + dataPoint.value.toPrecision(4) + '</td></tr>';
+                    }
+                }
+                html += '</table>';
+            }
+            label.innerHTML = html;
 
             var width = label.clientWidth;
             var graphWidth = this.timeToScreen(this.end) - this.timeToScreen(this.start);
@@ -2079,7 +2172,7 @@ links.Graph.prototype._setTooltip = function (dataPoint) {
 
 
 /**
- * Find the data point closest to given date and value (eucledian distance).
+ * Find the data point closest to given date and value (euclidean distance).
  * If no data point is found near given position, undefined is returned.
  * @param {Date} date
  * @param {Number} value
@@ -2103,44 +2196,68 @@ links.Graph.prototype._findClosestDataPoint = function (date, value) {
 
     for (var col = 0, colCount = this.data.length; col < colCount; col++) {
         var visible = this._getLineVisible(col);
+        var rowRange = this.data[col].visibleRowRange;
+        var data = this.data[col].data;
+        var type = this.data[col].type;
 
-        if (visible) {
-            var rowRange = this.data[col].visibleRowRange;
-            var data = this.data[col].data;
+        if (visible && rowRange) {
             var rowStep = this._calculateRowStep(rowRange);
             var row = rowRange.start;
-
             while (row <= rowRange.end) {
                 var dataPoint = data[row];
-                if (dataPoint.value != null ) {
-                    //if (dataPoint.date > date || row == rowRange.end) {
+                if (type == 'event') {
+                    dataPoint = {
+                        date: dataPoint.date,
+                        value: this.screenToY(16), // TODO: use the real font height
+                        text: dataPoint.text,
+                        title: dataPoint.title
+                    };
+                }
+                else if (type == 'area') {
+                    dataPoint = {
+                        date: dataPoint.start,
+                        value: this.screenToY(16), // TODO: use the real font height
+                        text: dataPoint.text,
+                        title: dataPoint.title
+                    };
+                }
 
+                if (dataPoint.value != null) {
                     // first data point found right from x.
                     var dateDistance = Math.abs(dataPoint.date - date) * this.ttsFactor;
                     if (dateDistance < maxDistance) {
                         var valueDistance = Math.abs(this.yToScreen(dataPoint.value) - this.yToScreen(value));
-                        if (valueDistance < maxDistance && isVisible(dataPoint)) {
-                            var eucledianDistance = Math.sqrt(
+                        if ((valueDistance < maxDistance) && isVisible(dataPoint)) {
+                            var distance = Math.sqrt(
                                     dateDistance * dateDistance +
                                     valueDistance * valueDistance);
-                            if (!winner || eucledianDistance < winner.eucledianDistance) {
+                            if (!winner || distance < winner.distance) {
                                 // we have a new winner
-                                var radius = Math.max(
-                                    (this._getLineStyle(col) == 'line') ?
-                                        this._getLineWidth(col) * 2 :
-                                        this._getLineRadius(col) * 2, 4);
                                 var color = this._getLineColor(col);
+                                var radius;
+                                if (type == 'event' || type == 'area') {
+                                    radius = this._getLineWidth(col);
+                                    color = this._getTextColor(col);
+                                }
+                                else if (this._getLineStyle(col) == 'line') {
+                                    radius = this._getLineWidth(col) * 2;
+                                }
+                                else {
+                                    radius = this._getLineRadius(col) * 2;
+                                }
+                                radius = Math.max(radius, 4);
 
                                 winner = {
-                                    dateDistance: dateDistance,
-                                    valueDistance: valueDistance,
-                                    eucledianDistance: eucledianDistance,
-                                    col: col,
+                                    distance: distance,
                                     dataPoint: {
                                         date: dataPoint.date,
+                                        //value: (dataPoint.value != undefined) ? dataPoint.value : this.screenToY(10),
                                         value: dataPoint.value,
+                                        title: dataPoint.title,
+                                        text: dataPoint.text,
                                         color: color,
-                                        radius: radius
+                                        radius: radius,
+                                        line: col
                                     }
                                 };
                             }
@@ -2313,24 +2430,36 @@ links.Graph.prototype._redrawLegend = function() {
 
 /**
  * Determines
- * @param data {Array}      An array containing objects with parameters
- *                          d (datetime) and v (value)
- * @param start {Date}      The start date of the visible range
- * @param end {Date}        The end date of the visible range
+ * @param {Array} data       An array containing objects with parameters
+ *                           d (datetime) and v (value)
+ * @param {Date} start       The start date of the visible range
+ * @param {Date} end         The end date of the visible range
+ * @param {String} type      Type of data. 'line' (default), 'area', or 'event'
+ * @param {Object} oldRowRange  previous row range, can serve as start
+ *                                to find the current visible range faster.
  * @return {object}         Range object containing start row and end row
  *                            range.start {int}  row number of first visible row
  *                            range.end   {int}  row number of last visible row +1
  *                                               (this can be the rowcount +1)
  */
-links.Graph.prototype._getVisbleRowRange = function(data, start, end, oldRowRange) {
+links.Graph.prototype._getVisbleRowRange = function(data, start, end, type, oldRowRange) {
     if (!data) {
         data = [];
+    }
+    var fieldStart = 'date';
+    var fieldEnd = 'date';
+    if (type == 'area') {
+        fieldStart = 'start';
+        fieldEnd = 'end';
     }
     var rowCount = data.length;
 
     // initialize
-    var rowRange = {"start": 0, "end": (rowCount-1)};
-    if (oldRowRange != undefined) {
+    var rowRange = {
+        start: 0,
+        end: (rowCount-1)
+    };
+    if (oldRowRange != null) {
         rowRange.start = oldRowRange.start;
         rowRange.end = oldRowRange.end;
     }
@@ -2346,21 +2475,21 @@ links.Graph.prototype._getVisbleRowRange = function(data, start, end, oldRowRang
 
     // find the first visible row. Start searching at the previous first visible row
     while (rowRange.start > 0 &&
-        data[rowRange.start].date.valueOf() > start.valueOf()) {
+        data[rowRange.start][fieldStart].valueOf() > start.valueOf()) {
         rowRange.start--;
     }
     while (rowRange.start < rowCount-1 &&
-        data[rowRange.start].date.valueOf() < start.valueOf()) {
+        data[rowRange.start][fieldStart].valueOf() < start.valueOf()) {
         rowRange.start++;
     }
 
     // find the last visible row. Start searching at the previous last visible row
     while (rowRange.end > rowRange.start &&
-        data[rowRange.end].date.valueOf() > end.valueOf()) {
+        data[rowRange.end][fieldEnd].valueOf() > end.valueOf()) {
         rowRange.end--;
     }
     while (rowRange.end < rowCount-1 &&
-        data[rowRange.end].date.valueOf() < end.valueOf()) {
+        data[rowRange.end][fieldEnd].valueOf() < end.valueOf()) {
         rowRange.end++;
     }
 
@@ -2370,39 +2499,54 @@ links.Graph.prototype._getVisbleRowRange = function(data, start, end, oldRowRang
 
 /**
  * Determines the row range of a datatable
- * @param data {Array}      An array containing objects with parameters
- *                          d (datetime) and v (value)
- * @return {object}         Range object containing start row and end row
- *                            range.start {Date} first date in the data
- *                            range.end   {Date} last date in the data
+ * @param data {Array}          An array containing objects with parameters
+ *                              d (datetime) and v (value)
+ * @param {String[]} [fields]   Optional array with field names to be read
+ *                              for min/max. These fields must contain Date
+ *                              objects. If fields is undefined, the data will
+ *                              be searched for ['date'].
+ * @return {object}             Range object containing start row and end row
+ *                                  range.start {Date} first date in the data
+ *                                  range.end   {Date} last date in the data
  */
-links.Graph.prototype._getRowRange = function(data) {
+links.Graph.prototype._getRowRange = function(data, fields) {
     if (!data) {
         data = [];
     }
+    if (!fields) {
+        fields = ['date'];
+    }
 
     var rowRange = {
-        'min': undefined,  // number
-        'max': undefined   // number
+        min: undefined,  // number
+        max: undefined   // number
     };
 
     if (data.length > 0) {
-        rowRange.min = data[0].date.valueOf();
-        rowRange.max = data[0].date.valueOf();
+        for (var f = 0; f < fields.length; f++) {
+            var field = fields[f];
 
-        for (var row = 1, rows = data.length; row < rows; row++) {
-            var d = data[row].date;
-            if (d != undefined) {
-                rowRange.min = Math.min(d.valueOf(), rowRange.min);
-                rowRange.max = Math.max(d.valueOf(), rowRange.max);
+            rowRange.min = data[0][field].valueOf();
+            rowRange.max = data[0][field].valueOf();
+
+            for (var row = 1, rows = data.length; row < rows; row++) {
+                var d = data[row][field];
+                if (d != undefined) {
+                    rowRange.min = Math.min(d.valueOf(), rowRange.min);
+                    rowRange.max = Math.max(d.valueOf(), rowRange.max);
+                }
             }
         }
     }
 
-    return {
-        min: (rowRange.min != undefined) ? new Date(rowRange.min) : undefined,
-        max: (rowRange.max != undefined) ? new Date(rowRange.max) : undefined
-    };
+    if (rowRange.min != null && !isNaN(rowRange.min) &&
+        rowRange.max != null && !isNaN(rowRange.max)) {
+        return {
+            min: new Date(rowRange.min),
+            max: new Date(rowRange.max)
+        };
+    }
+    return null;
 };
 
 /**
@@ -2417,26 +2561,31 @@ links.Graph.prototype._getDataRange = function(data) {
         data = [];
     }
 
-    var dataRange = {
-        "min": -10,
-        "max": 10
-    };
-
-    // initialize min and max
-    if (data.length > 0) {
-        dataRange.min = data[0].value;
-        dataRange.max = data[0].value;
-    }
-
-    for (var row = 1, rows = data.length; row < rows; row++) {
+    var dataRange = null;
+    for (var row = 0, rows = data.length; row < rows; row++) {
         var value = data[row].value;
         if (value != undefined) {
-            dataRange.min = Math.min(value, dataRange.min);
-            dataRange.max = Math.max(value, dataRange.max);
+            if (dataRange) {
+                // find max/min
+                dataRange.min = Math.min(value, dataRange.min);
+                dataRange.max = Math.max(value, dataRange.max);
+            }
+            else {
+                // first defined value
+                dataRange = {
+                    min: value,
+                    max: value
+                }
+            }
         }
     }
 
-    return dataRange;
+    if (dataRange &&
+        dataRange.min != null && !isNaN(dataRange.min) &&
+        dataRange.max != null && !isNaN(dataRange.max)) {
+        return dataRange;
+    }
+    return null;
 };
 
 
@@ -2479,6 +2628,42 @@ links.Graph.prototype._getLineColor = function(column) {
     }
 
     return "black";
+};
+
+/**
+ * Returns a string with the text color for the given column in data.
+ * @param {int} column    The column number
+ * @return {string} color The text color for this line
+ */
+links.Graph.prototype._getTextColor = function(column) {
+    if (this.lines && column < this.lines.length) {
+        var line = this.lines[column];
+        if (line && line.textColor != undefined)
+            return line.textColor;
+    }
+
+    if (this.line && this.line.textColor != undefined)
+        return this.line.textColor;
+
+    return "#4D4D4D";
+};
+
+/**
+ * Returns a string with the font the given column in data.
+ * @param {int} column    The column number
+ * @return {string} font  The font for this line, for example '13px arial'
+ */
+links.Graph.prototype._getFont = function(column) {
+    if (this.lines && column < this.lines.length) {
+        var line = this.lines[column];
+        if (line && line.font != undefined)
+            return line.font;
+    }
+
+    if (this.line && this.line.font != undefined)
+        return this.line.font;
+
+    return "13px arial";
 };
 
 /**
@@ -2566,7 +2751,7 @@ links.Graph.prototype._setLineVisible = function(column, visible) {
         return;
 
     if (!this.lines)
-        this.lines = new Array();
+        this.lines = [];
 
     if (!this.lines[column])
         this.lines[column] = {};
@@ -2747,6 +2932,38 @@ links.Graph.prototype._onMouseMove = function (event) {
     links.Graph.preventDefault(event);
 };
 
+
+/**
+ * Perform mouse out, but simulate mouse leave.
+ * This function force the tooltip to hide when the mouse leaves the frame.
+ * It is also called (as an event listener) when the graph is dragged and the
+ * mouse button is released. This way the tooltip can be hidden after a drag.
+ * @param {Event} event
+ */
+links.Graph.prototype._onMouseOut = function (event) {
+    event = event || window.event;
+    var me = this;
+
+    // Do not hide when dragging the graph
+    if (event.which > 0 && event.type == 'mouseout' ) {
+        if (!this.onmouseupoutside) {
+            this.onmouseupoutside = function (event) {me._onMouseOut(event);};
+            links.Graph.addEventListener(document, "mouseup", this.onmouseupoutside);
+        }
+        return;
+    }
+
+    // Remove event listener when mouse is released outside of graph
+    if (event.type == 'mouseup') {
+        if (this.onmouseupoutside) {
+            links.Graph.removeEventListener(document, "mouseup", this.onmouseupoutside);
+            this.onmouseupoutside = undefined;
+        }
+    }
+
+    if (links.Graph.isOutside(event, this.frame))
+        this._setTooltip(undefined);
+}
 
 /**
  * Perform mouse hover
@@ -2992,24 +3209,21 @@ links.Graph._getAbsoluteTop = function(elem) {
  * @return {Number} pageY
  */
 links.Graph._getPageY = function (event) {
+    if (('targetTouches' in event) && event.targetTouches.length) {
+        event = event.targetTouches[0];
+    }
+
     if ('pageY' in event) {
         return event.pageY;
     }
-    else {
-        var clientY;
-        if (('targetTouches' in event) && event.targetTouches.length) {
-            clientY = event.targetTouches[0].clientY;
-        }
-        else {
-            clientY = event.clientY;
-        }
 
-        var doc = document.documentElement;
-        var body = document.body;
-        return clientY +
-            ( doc && doc.scrollTop || body && body.scrollTop || 0 ) -
-            ( doc && doc.clientTop || body && body.clientTop || 0 );
-    }
+    // calculate pageY from clientY
+    var clientY = event.clientY;
+    var doc = document.documentElement;
+    var body = document.body;
+    return clientY +
+        ( doc && doc.scrollTop || body && body.scrollTop || 0 ) -
+        ( doc && doc.clientTop || body && body.clientTop || 0 );
 };
 
 /**
@@ -3018,24 +3232,21 @@ links.Graph._getPageY = function (event) {
  * @return {Number} pageX
  */
 links.Graph._getPageX = function (event) {
-    if ('pageY' in event) {
+    if (('targetTouches' in event) && event.targetTouches.length) {
+        event = event.targetTouches[0];
+    }
+
+    if ('pageX' in event) {
         return event.pageX;
     }
-    else {
-        var clientX;
-        if (('targetTouches' in event) && event.targetTouches.length) {
-            clientX = event.targetTouches[0].clientX;
-        }
-        else {
-            clientX = event.clientX;
-        }
 
-        var doc = document.documentElement;
-        var body = document.body;
-        return clientX +
-            ( doc && doc.scrollLeft || body && body.scrollLeft || 0 ) -
-            ( doc && doc.clientLeft || body && body.clientLeft || 0 );
-    }
+    // calculate pageX from clientX
+    var clientX = event.clientX;
+    var doc = document.documentElement;
+    var body = document.body;
+    return clientX +
+        ( doc && doc.scrollLeft || body && body.scrollLeft || 0 ) -
+        ( doc && doc.clientLeft || body && body.clientLeft || 0 );
 };
 
 /**
@@ -3051,64 +3262,77 @@ links.Graph._getPageX = function (event) {
  *                             automatically redrawn after the range is changed
  */
 links.Graph.prototype.setVisibleChartRange = function(start, end, redrawNow) {
+    var col, cols, rowRange, d;
+
     // TODO: rewrite this method for the new data format
     if (start != null) {
-        this.start = new Date(start.valueOf());
+        // clone the value
+        start = new Date(start.valueOf());
     } else {
         // use earliest date from the data
         var startValue = null;  // number
-        for (var col = 0, cols = this.data.length; col < cols; col++) {
-            var d = this.data[col].rowRange.min;
+        for (col = 0, cols = this.data.length; col < cols; col++) {
+            rowRange = this.data[col].rowRange;
+            if (rowRange) {
+                d = rowRange.min;
 
-            if (d != undefined) {
-                if (startValue != undefined) {
-                    startValue = Math.min(startValue, d.valueOf());
-                }
-                else {
-                    startValue = d.valueOf();
+                if (d != undefined) {
+                    if (startValue != undefined) {
+                        startValue = Math.min(startValue, d.valueOf());
+                    }
+                    else {
+                        startValue = d.valueOf();
+                    }
                 }
             }
         }
 
         if (startValue != undefined) {
-            this.start = new Date(startValue);
+            start = new Date(startValue);
         }
         else {
-            this.start = new Date();
+            start = new Date();
         }
     }
 
     if (end != null) {
-        this.end = new Date(end.valueOf());
+        // clone the value
+        end = new Date(end.valueOf());
     } else {
         // use lastest date from the data
         var endValue = null;
-        for (var col = 0, cols = this.data.length; col < cols; col++) {
-            var d = this.data[col].rowRange.max;
+        for (col = 0, cols = this.data.length; col < cols; col++) {
+            rowRange = this.data[col].rowRange;
+            if (rowRange) {
+                d = rowRange.max;
 
-            if (d != undefined) {
-                if (endValue != undefined) {
-                    endValue = Math.max(endValue, d.valueOf());
-                }
-                else {
-                    endValue = d;
+                if (d != undefined) {
+                    if (endValue != undefined) {
+                        endValue = Math.max(endValue, d.valueOf());
+                    }
+                    else {
+                        endValue = d;
+                    }
                 }
             }
         }
 
         if (endValue != undefined) {
-            this.end = new Date(endValue);
+            end = new Date(endValue);
         } else {
-            this.end = new Date();
-            this.end.setDate(this.end.getDate() + 20);
+            end = new Date();
+            end.setDate(this.end.getDate() + 20);
         }
     }
 
     // prevent start Date <= end Date
-    if (this.end.valueOf() <= this.start.valueOf()) {
-        this.end = new Date(this.start.valueOf());
-        this.end.setDate(this.end.getDate() + 20);
+    if (end.valueOf() <= start.valueOf()) {
+        end = new Date(start.valueOf());
+        end.setDate(end.getDate() + 20);
     }
+
+    // apply new start and end
+    this._applyRange(start, end);
 
     this._calcConversionFactor();
 
@@ -3396,3 +3620,19 @@ links.Graph.preventDefault = function (event) {
         event.returnValue = false;  // IE browsers
     }
 };
+
+/**
+ * Check if an event took place outside a specified parent element.
+ * @param {Event} event A javascript (mouse) event object
+ * @param {Element} parent The DOM element to check if event was inside it
+ * @return {boolean}
+ */
+links.Graph.isOutside = function (event, parent) {
+    var elem = event.relatedTarget || event.toElement || event.fromElement
+
+    while ( elem && elem !== parent) {
+        elem = elem.parentNode;
+    }
+
+    return elem !== parent;
+}

@@ -30,7 +30,7 @@
 </table>
 
 
-<h2><a name="Contents" id="Contents"></a>Contents</h2>
+<h2 id="Contents">Contents</h2>
 <ul>
     <li><a href="#Overview">Overview</a></li>
     <li><a href="#Example">Example</a></li>
@@ -40,10 +40,11 @@
     <li><a href="#Methods">Methods</a></li>
     <li><a href="#Events">Events</a></li>
     <li><a href="#Styles">Styles</a></li>
+    <li><a href="#Themeroller">jQuery Themeroller integration</a></li>
     <li><a href="#Data_Policy">Data Policy</a></li>
 </ul>
 
-<h2><a name="Overview" id="Overview"></a>Overview</h2>
+<h2 id="Overview">Overview</h2>
 <p>
     The Timeline is an interactive visualization chart to visualize events in time.
     The events can take place on a single date, or have a start and end date (a range).
@@ -54,7 +55,7 @@
 </p>
 
 <p>
-    When the timeline is defined as editable, events can be moved to another time
+    When the timeline is defined as editable (and groupChangeable and timeChangeable are set accordingly), events can be moved to another time
     by dragging them. By double clicking, the contents of an event can be changed.
     An event can be deleted by clicking the delete button on the upper right.
     A new event can be added in different
@@ -76,7 +77,7 @@
     The Timeline is designed to display up to 1000 events smoothly on any modern browser.
 </p>
 
-<h2><a name="Example" id="Example"></a>Example</h2>
+<h2 id="Example">Example</h2>
 <p>
     Here a timeline example. Click and drag to move the timeline, scroll to zoom the timeline.
 </p>
@@ -129,7 +130,7 @@
         ]);
 
         // specify options
-        options = {
+        var options = {
           "width":  "100%",
           "height": "99%",
           "style": "box" // optional
@@ -151,7 +152,7 @@
 </pre>
 
 
-<h2><a name="Loading" id="Loading"></a>Loading</h2>
+<h2 id="Loading">Loading</h2>
 
 <p>
     To load the Timeline, download the file
@@ -202,7 +203,7 @@ provided with data and options.
 </p>
 
 
-<h2><a name="Data_Format" id="Data_Format"></a>Data Format</h2>
+<h2 id="Data_Format">Data Format</h2>
 <p>
     The Timeline supports two data types: a JSON Array or a Google DataTable.
 </p>
@@ -258,6 +259,7 @@ data.addColumn('string', 'content');
 // Optional: a column 'group'
 // Optional: a column 'className'
 // Optional: a column 'editable'
+// Optional: a column 'type'
 
 data.addRow([new Date(2010,7,15), new Date(2010,8,2), "Trajectory A"]);
 // ...
@@ -267,7 +269,8 @@ data.addRow([new Date(2010,7,15), new Date(2010,8,2), "Trajectory A"]);
     The Timeline checks the type of the columns by first reading the
     column id, and if not provided read the column label.
     If both the column id's and label's are undefined, the Timeline will use
-    column 0 as start, column 1 as end, and column 2 as content.
+    column 0 as start, column 1 as end, column 2 as content, column 3 as group,
+    column 4 as className, and column 5 as editable.
 </p>
 
 <h3>Fields</h3>
@@ -286,8 +289,16 @@ data.addRow([new Date(2010,7,15), new Date(2010,8,2), "Trajectory A"]);
     <tr>
         <td>start</td>
         <td>Date</td>
-        <td>yes</td>
-        <td>The start date of the event, for example <code>new Date(2010,09,23)</code>.</td>
+        <td>yes*</td>
+        <td>
+            The start date of the event, for example <code>new Date(2010,2,23)</code>.
+            <br>
+            <blockquote style="color: red; font-style: italic;">
+                Remark: Months in the JavaScript Date object are zero-based,<br>
+                so <code>new Date(2010,2,23)</code> represents 23th of March, 2010.
+            </blockquote>
+			* If the type is set to floatingRange, the start is optional.
+        </td>
     </tr>
     <tr>
         <td>end</td>
@@ -350,11 +361,26 @@ data.addRow([new Date(2010,7,15), new Date(2010,8,2), "Trajectory A"]);
             read-only, individual events may be made editable, and vice versa.
         </td>
     </tr>
+    <tr>
+        <td>type</td>
+        <td>String</td>
+        <td>no</td>
+        <td>Type of the event, optional. Available values: "box", "range", "dot", "floatingRange".
+            By default, the type is "range" for events having a start and end
+            date, and "box" for events with a start date. This default can be
+            overwritten by the global option "style".
+        </td>
+    </tr>
 </table>
 
+<h3>Custom fields</h3>
+
+It is possible to add custom fields to items. The Timeline will ignore them and leave
+them intact. When retrieving an item via <code>getItem</code>, these custom fields
+will be returned along with the known fields.
 
 
-<h2><a name="Configuration_Options" id="Configuration_Options"></a>Configuration Options</h2>
+<h2 id="Configuration_Options">Configuration Options</h2>
 
 <p>
     Options can be used to customize the timeline. Options are defined as a JSON object.
@@ -418,6 +444,29 @@ var options = {
 </tr>
 
 <tr>
+    <td>clusterMaxItems</td>
+    <td>Number</td>
+    <td>5</td>
+    <td>The maximum quantity of items that can be shown outside a cluster. Setting a low value is useful to limit the
+        height of the container element. This value must be at least one.
+        <br><span style="background-color: orangered; color: white; padding: 3px; border-radius: 3px; font-size: 80%;"
+                  title="This feature is currently in an experimental phase, and not yet suitable for a production environment."
+                >experimental</span>
+    </td>
+</tr>
+
+<tr>
+    <td>customStackOrder</td>
+    <td>function</td>
+    <td>none</td>
+    <td>Provide a custom sort function to order the items. The order of the
+        items is determining the way they are stacked. The function
+        customStackOrder is called with two parameters, both of type
+        `timeline.Item`.
+    </td>
+</tr>
+
+<tr>
     <td>box.align</td>
     <td>String</td>
     <td>"center"</td>
@@ -441,7 +490,8 @@ var options = {
     <td>If true, the events can be edited, created and deleted.
         Events can only be editable when th option <code>selectable</code> is true
         (default). When editable is true, the Timeline can fire events
-        <code>change</code>, <code>edit</code>, <code>add</code>, <code>delete</code>.
+        <code>change</code>, <code>changed</code>, <code>edit</code>,
+        <code>add</code>, <code>delete</code>.
         <br>
         This global setting editable can be overwritten for individual events
         by providing the events with a field editable,
@@ -471,11 +521,11 @@ var options = {
 </tr>
 
 <tr>
-    <td>groupsChangeable</td>
+    <td>groupChangeable</td>
     <td>boolean</td>
-    <td>true</td>
-    <td>If true (default), items can be moved from one group to another.
-        Only applicable when groups are used.</td>
+    <td>false</td>
+    <td>If true, items can be moved from one group to another.
+        Only applicable when groups are used. See also option <code>timeChangeable</code>.</td>
 </tr>
 <tr>
     <td>groupsOnRight</td>
@@ -484,6 +534,23 @@ var options = {
     <td>If false, the groups legend is drawn at the left side of the timeline.
         If true, the groups legend is drawn on the right side.</td>
 </tr>
+
+<tr>
+    <td>groupsOrder</td>
+    <td>boolean | function</td>
+    <td>true</td>
+    <td>
+      Allows to customize the way groups are ordered.
+      When true (default), groups will be ordered alphabetically.
+      When false, groups will not be ordered at all.
+      When a function, groups will be ordered using this sort function.
+      While sorting, the sort function is called with two groups to compare
+      as parameters, and the function must return 0 when a and b are equal,
+      a value larger than 0 when a is larger than b,
+      and a value smaller than 0 when a is smaller than b.
+    </td>
+</tr>
+
 <tr>
     <td>groupsWidth</td>
     <td>string</td>
@@ -491,6 +558,14 @@ var options = {
     <td>By default, the width of the groups legend is adjusted to the group
         names. A fixed width can be set for the groups legend by specifying the
         groupsWidth as a string, for example "200px".</td>
+</tr>
+
+<tr>
+    <td>groupMinHeight</td>
+    <td>int</td>
+    <td>0</td>
+    <td>The minimum height of each individual group even if they have no items.
+        The group height is set as the greatest value between items height and the groupMinHeight.</td>
 </tr>
 
 <tr>
@@ -507,21 +582,25 @@ var options = {
 </tr>
 
 <tr>
-    <td>intervalMax</td>
-    <td>Number</td>
-    <td>315360000000000</td>
-    <td>Set a maximum interval for the visible range in milliseconds.
-        It will not be possible to zoom out further than this maximum.
-        Default value equals about 10000 years.
-    </td>
-</tr>
+    <td>locale</td>
+    <td>string</td>
+    <td>"en"</td>
+    <td>Choose locale for the Timeline.
+        The Built-in locale is english (<code>en</code>).
+        More locales are available in the file <code>timeline-locales.js</code>:
 
-<tr>
-    <td>intervalMin</td>
-    <td>Number</td>
-    <td>10</td>
-    <td>Set a minimum interval for the visible range in milliseconds.
-        It will not be possible to zoom in further than this minimum.
+        <ul>
+            <li>Catalan, <code>ca</code> (aliases: <code>ca_ES</code>)</li>
+            <li>English, <code>en</code> (aliases: <code>en_US</code>, <code>en_UK</code>)</li>
+            <li>Dutch, <code>nl</code> (aliases: <code>nl_NL</code>, <code>nl_BE</code>)</li>
+            <li>Finnish, <code>fi</code> (aliases: <code>fi_FI</code>)</li>
+            <li>French, <code>fr</code> (aliases: <code>fr_FR</code>, <code>fr_BE</code>, <code>fr_CA</code>)</li>
+            <li>German, <code>de</code> (aliases: <code>de_DE</code>, <code>de_CH</code>)</li>
+            <li>Danish, <code>da</code> (aliases: <code>da_DK</code>)</li>
+            <li>Russian, <code>ru</code> (aliases: <code>ru_RU</code>)</li>
+            <li>Spanish, <code>es</code> (aliases: <code>es_ES</code>)</li>
+            <li>Turkish, <code>tr</code> (aliases: <code>tr_TR</code>)</li>
+        </ul>
     </td>
 </tr>
 
@@ -531,6 +610,7 @@ var options = {
     <td>none</td>
     <td>Set a maximum Date for the visible range.
         It will not be possible to move beyond this maximum.
+        The maximum date itself is excluded.
     </td>
 </tr>
 
@@ -674,14 +754,45 @@ var options = {
     <td>showButtonNew</td>
     <td>boolean</td>
     <td>false</td>
-    <td>Show the button "Create new event" in the a navigation menu. </td>
+    <td>Show the button "Create new event" in the a navigation menu.
+    Only applicable when option `editable` is true.</td>
 </tr>
 <tr>
     <td>showNavigation</td>
     <td>boolean</td>
     <td>false</td>
     <td>Show a navigation menu with buttons to move and zoom the timeline.
+        The zoom buttons are only visible when option `zoomable` is true,
+        and and move buttons are only visible when option `moveable` is true.
     </td>
+</tr>
+
+<tr>
+    <td>timeChangeable</td>
+    <td>boolean</td>
+    <td>true</td>
+    <td>If false, items can not be moved or dragged horizontally (neither start time nor end time is changable).
+        This is useful when items should be editable but can only be changed regarding group or content (typical use case: scheduling events). See also the option <code>groupChangeable</code>.</td>
+</tr>
+
+
+<tr>
+    <td>unselectable</td>
+    <td>boolean</td>
+    <td>true</td>
+    <td>If true, a selected event on the timeline can be un unselected.
+        If false, a selected event cannot be unselected unless when selecting
+        an other event. This means that as soon as the Timeline has a selected
+        event, it will remain in a state where there is always an event selected.
+        See also the option <code>selectable</code>.
+    </td>
+</tr>
+
+<tr>
+    <td>width</td>
+    <td>string</td>
+    <td>"100%"</td>
+    <td>The width of the timeline in pixels or as a percentage.</td>
 </tr>
 
 <tr>
@@ -694,15 +805,28 @@ var options = {
 </tr>
 
 <tr>
-    <td>width</td>
-    <td>string</td>
-    <td>"100%"</td>
-    <td>The width of the timeline in pixels or as a percentage.</td>
+    <td>zoomMax</td>
+    <td>Number</td>
+    <td>315360000000000</td>
+    <td>Set a maximum zoom interval for the visible range in milliseconds.
+        It will not be possible to zoom out further than this maximum.
+        Default value equals about 10000 years.
+    </td>
 </tr>
+
+<tr>
+    <td>zoomMin</td>
+    <td>Number</td>
+    <td>10</td>
+    <td>Set a minimum zoom interval for the visible range in milliseconds.
+        It will not be possible to zoom in further than this minimum.
+    </td>
+</tr>
+
 
 </table>
 
-<h2><a name="Methods" id="Methods"></a>Methods</h2>
+<h2 id="Methods">Methods</h2>
 <p>
     The Timeline supports the following methods.
 </p>
@@ -720,8 +844,10 @@ var options = {
     <td>Add an item to the Timeline.
         The provided parameter <code>properties</code> is an Object,
         containing parameters <code>start</code> (Date), <code>end</code> (Date),
-        <code>content</code> (String), <code>group</code> (String).
-        Parameters <code>end</code> and <code>group</code> are optional.
+        <code>content</code> (String), <code>group</code> (String),
+        <code>className</code> (String), and <code>editable</code> (Boolean).
+        Parameters <code>start</code> and <code>content</code> are required,
+        the others are optional.
     </td>
 </tr>
 <tr>
@@ -757,9 +883,9 @@ var options = {
 <tr>
     <td>cancelChange()</td>
     <td>none</td>
-    <td>A <code>change</code> event can be canceled by calling the method
+    <td>A <code>changed</code> event can be canceled by calling the method
         <code>cancelChange</code> from within an event listener that listens for
-        <code>change</code> events. This is useful when changes need to be approved.
+        <code>changed</code> events. This is useful when changes need to be approved.
     </td>
 </tr>
 
@@ -779,8 +905,10 @@ var options = {
     <td>Change properties of an existing item in the Timeline.
         <code>index</code> (Number) is the index of the item.
         The provided parameter <code>properties</code> is an Object,
-        and can contain parameters <code>start</code> (Date), <code>end</code> (Date),
-        <code>content</code> (String), <code>group</code> (String).
+        and can contain parameters <code>start</code> (Date),
+        <code>end</code> (Date), <code>content</code> (String),
+        <code>group</code> (String), <code>className</code> (String),
+        and <code>editable</code> (Boolean).
     </td>
 </tr>
 
@@ -818,6 +946,15 @@ var options = {
 </tr>
 
 <tr>
+    <td>getCluster(index)</td>
+    <td>Object</td>
+    <td>Retrieve the properties of a single cluster. The returned object can
+        contain parameters <code>start</code> (Date), and <code>items</code> that has
+        each item contained in the cluster. Each item have the same properties as in a call to
+        <code>getItem</code>.
+</tr>
+
+<tr>
     <td>getCustomTime()</td>
     <td>Date</td>
     <td>Retrieve the custom time.
@@ -846,7 +983,8 @@ var options = {
     <td>Array of selection elements</td>
     <td>Standard <code>getSelection()</code> implementation.
         Returns an array with one or multiple selections. Each selection contains
-        the property <code>row</code>.
+        the property <code>row</code> (if an item is selected) or <code>cluster</code> if
+        a cluster is selected.
     </td>
 </tr>
 
@@ -856,6 +994,15 @@ var options = {
     <td>Returns an object with <code>start</code> and <code>end</code> properties,
         which each one of them is a Date object,
         representing the currently visible time range.</td>
+</tr>
+
+<tr>
+    <td>getVisibleItems(start, end)</td>
+    <td>Array of row indices </td>
+    <td>Returns an array of item indices whose range or value falls within the 
+        <code>start</code> and <code>end</code> properties, which each one of 
+        them is a Date object. 
+    </td>
 </tr>
 
 <tr>
@@ -959,9 +1106,33 @@ var options = {
     <td>none</td>
     <td>Adjust the visible time range such that all events are visible.</td>
 </tr>
+
+<tr>
+    <td>move(moveFactor)</td>
+    <td>none</td>
+    <td>Move the timeline the given movefactor to the left or right.
+        Start and end date will be adjusted, and the timeline will be redrawn.
+        For example, try moveFactor = 0.1 or -0.1.
+        <code>moveFactor</code> is a Number that determines the moving amount.
+        A positive value will move right, a negative value will move left.
+    </td>
+</tr>
+
+<tr>
+    <td>zoom(zoomFactor, zoomAroundDate)</td>
+    <td>none</td>
+    <td>Zoom the timeline the given zoomfactor in or out. Start and end date
+        will be adjusted, and the timeline will be redrawn.
+        You can optionally give a date around which to zoom.
+        For example, try zoomfactor = 0.1 or -0.1.
+        <code>zoomFactor</code> is a Number that determines the zooming amount.
+        Positive value will zoom in, negative value will zoom out.
+        <code>zoomAroundDate</code> is a Date around which to zoom and it is optional.
+    </td>
+</tr>
 </table>
 
-<h2><a name="Events" id="Events"></a>Events</h2>
+<h2 id="Events">Events</h2>
 
 <p>
     The Timeline fires events after an event is selected, the visible range changed,
@@ -1025,6 +1196,21 @@ google.visualization.events.addListener(mytimeline, 'select', onselect);
 
     <tr>
         <td>change</td>
+        <td>The properties of an event are changing.
+            Fired repeatedly while the user is modifying the start date or end
+            date of an event by moving (dragging) the event in the Timeline.
+            <br>
+            The selected row can be retrieved via the method <code>getSelection</code>,
+            and new start and end data can be read in the according row in the data table.
+            <br>
+        </td>
+        <td>
+            none
+        </td>
+    </tr>
+
+    <tr>
+        <td>changed</td>
         <td>The properties of an event changed.
             Fired after the user modified the start date or end date of an event
             by moving (dragging) the event in the Timeline.
@@ -1032,7 +1218,7 @@ google.visualization.events.addListener(mytimeline, 'select', onselect);
             The selected row can be retrieved via the method <code>getSelection</code>,
             and new start and end data can be read in the according row in the data table.
             <br>
-            The <code>change</code> event can be canceled by calling the method
+            The <code>changed</code> event can be canceled by calling the method
             <code>cancelChange</code> from within the event listener. This is useful
             when changes need to be approved.
         </td>
@@ -1112,11 +1298,11 @@ google.visualization.events.addListener(mytimeline, 'select', onselect);
 
     <tr>
         <td>select</td>
-        <td>When the user clicks on an event on the timeline,
+        <td>When the user clicks on an event or a cluster on the timeline,
             the corresponding row in the data table is selected.
             The visualization then fires this event.
             <br>
-            The selected row can be retrieved via the method <code>getSelection</code>.
+            The selected row or cluster can be retrieved via the method <code>getSelection</code>.
         </td>
         <td>none</td>
     </tr>
@@ -1149,7 +1335,7 @@ google.visualization.events.addListener(mytimeline, 'select', onselect);
 
 </table>
 
-<h2><a name="Styles" id="Styles"></a>Styles</h2>
+<h2 id="Styles">Styles</h2>
 <p>
     All parts of the Timeline have a class name and a default css style.
     The styles can be overwritten, which enables full customization of the layout
@@ -1484,8 +1670,16 @@ div.timeline-event {
 
 </table>
 
+<h2 id="Themeroller">jQuery Themeroller integration</h2>
+<p>
+    Most of jQuery widgets are theme aware in terms of <a href="http://jqueryui.com/themeroller/">jQuery Themeroller CSS framework</a>.
+    If you would like to make the Timeline aware of jQuery themes, please include in your page a Themeroller theme of your choice
+    (<strong>ui.theme.css</strong>) and the CSS file <strong>timeline-theme.css</strong>. The file <strong>timeline.css</strong> should not be included.
+    These two files are enough to style the Timeline according to the selected theme.
+</p>
 
-<h2><a name="Data_Policy" id="Data_Policy"></a>Data Policy</h2>
+
+<h2 id="Data_Policy">Data Policy</h2>
 <p>
     All code and data are processed and rendered in the browser. No data is sent to any server.
 </p>
